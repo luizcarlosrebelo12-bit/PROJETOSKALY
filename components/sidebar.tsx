@@ -53,13 +53,15 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
   const content = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-        <Image
-          src="/logo.png"
-          alt="KM Logo"
-          width={36}
-          height={36}
-          className="rounded-lg"
-        />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+          <Image
+            src="/logo.png"
+            alt="KM Logo"
+            width={32}
+            height={32}
+            className="rounded-md"
+          />
+        </div>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-bold">Gestão de Projetos</h1>
           <p className="truncate text-xs text-sidebar-foreground/60">
@@ -128,7 +130,9 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
       {/* Topbar mobile */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="KM Logo" width={28} height={28} className="rounded-md" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white p-0.5">
+            <Image src="/logo.png" alt="KM Logo" width={24} height={24} className="rounded-sm" />
+          </div>
           <span className="text-sm font-bold">Gestão de Projetos</span>
         </div>
         <Button

@@ -22,9 +22,9 @@ export function YearSummary({ summary, currentMonth, onMonthClick }: YearSummary
   const totalProjects = summary.reduce((sum, m) => sum + m.count, 0)
 
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border bg-card p-4 sm:p-6">
       <h3 className="mb-4 text-sm font-medium text-muted-foreground">Resumo Anual</h3>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-12">
         {summary.map((item) => (
           <button
             key={item.month}
@@ -47,7 +47,7 @@ export function YearSummary({ summary, currentMonth, onMonthClick }: YearSummary
           </button>
         ))}
       </div>
-      <div className="mt-4 flex items-center justify-between border-t pt-4">
+      <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <span className="text-sm text-muted-foreground">Total de Projetos: </span>
           <span className="font-semibold">{totalProjects}</span>

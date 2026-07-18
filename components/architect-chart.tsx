@@ -22,8 +22,7 @@ export function ArchitectChart({ projects }: ArchitectChartProps) {
   })
 
   const data = Object.entries(architectCount).map(([name, value], index) => ({
-    name: name.length > 10 ? name.substring(0, 10) + '...' : name,
-    fullName: name,
+    name,
     value,
     color: COLORS[index % COLORS.length],
     percent: Math.round((value / projects.length) * 100),
@@ -54,7 +53,7 @@ export function ArchitectChart({ projects }: ArchitectChartProps) {
         fill="#fff"
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={11}
+        fontSize={12}
         fontWeight="bold"
       >
         {`${(percent).toFixed(0)}%`}
@@ -63,20 +62,20 @@ export function ArchitectChart({ projects }: ArchitectChartProps) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3 sm:p-4">
-      <h3 className="mb-3 text-center text-sm font-semibold text-foreground sm:text-base">
+    <div className="rounded-lg border bg-card p-4 sm:p-6">
+      <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
         Por Arquiteto
       </h3>
-      <div className="flex flex-col items-center gap-3 sm:gap-4">
-        <div className="h-36 w-36 sm:h-44 sm:w-44">
+      <div className="flex flex-col items-center gap-4">
+        <div className="mx-auto aspect-square w-full max-w-[220px] sm:max-w-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={25}
-                outerRadius={55}
+                innerRadius="45%"
+                outerRadius="80%"
                 paddingAngle={3}
                 dataKey="value"
                 label={renderLabel}
@@ -89,22 +88,22 @@ export function ArchitectChart({ projects }: ArchitectChartProps) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex max-w-full flex-wrap justify-center gap-2 text-xs sm:text-sm">
-          {data.slice(0, 4).map((item, index) => (
-            <div key={index} className="flex items-center gap-1.5">
-              <div 
-                className="h-3 w-3 shrink-0 rounded-full" 
-                style={{ backgroundColor: item.color }} 
+        <div className="flex w-full flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm">
+          {data.slice(0, 6).map((item, index) => (
+            <div key={index} className="flex max-w-full items-center gap-1.5" title={item.name}>
+              <div
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: item.color }}
               />
-              <span className="truncate text-foreground">
+              <span className="max-w-[160px] truncate text-foreground sm:max-w-[200px]">
                 {item.name}: <strong>{item.value}</strong>
               </span>
             </div>
           ))}
         </div>
-        {data.length > 4 && (
+        {data.length > 6 && (
           <div className="text-xs text-muted-foreground">
-            +{data.length - 4} outros
+            +{data.length - 6} outros
           </div>
         )}
       </div>

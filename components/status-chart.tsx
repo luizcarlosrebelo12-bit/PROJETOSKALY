@@ -45,7 +45,7 @@ export function StatusChart({ projects }: StatusChartProps) {
         fill="#fff"
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={12}
+        fontSize={13}
         fontWeight="bold"
       >
         {`${(percent).toFixed(0)}%`}
@@ -54,20 +54,20 @@ export function StatusChart({ projects }: StatusChartProps) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3 sm:p-4">
-      <h3 className="mb-3 text-center text-sm font-semibold text-foreground sm:text-base">
+    <div className="rounded-lg border bg-card p-4 sm:p-6">
+      <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
         Status dos Projetos
       </h3>
-      <div className="flex flex-col items-center gap-3 sm:gap-4">
-        <div className="h-36 w-36 sm:h-44 sm:w-44">
+      <div className="flex flex-col items-center gap-4">
+        <div className="mx-auto aspect-square w-full max-w-[220px] sm:max-w-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={25}
-                outerRadius={55}
+                innerRadius="45%"
+                outerRadius="80%"
                 paddingAngle={3}
                 dataKey="value"
                 label={renderLabel}
@@ -80,15 +80,15 @@ export function StatusChart({ projects }: StatusChartProps) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex flex-wrap justify-center gap-3 text-xs sm:text-sm">
+        <div className="flex flex-wrap justify-center gap-3 text-xs sm:gap-4 sm:text-sm">
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-green-500" />
+            <div className="h-3 w-3 shrink-0 rounded-full bg-green-500" />
             <span className="text-foreground">
               Entregues: <strong>{entregues}</strong>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-amber-500" />
+            <div className="h-3 w-3 shrink-0 rounded-full bg-amber-500" />
             <span className="text-foreground">
               Pendentes: <strong>{pendentes}</strong>
             </span>
