@@ -6,6 +6,8 @@ export type ProjectStatus =
   | 'ENTREGUE' 
   | 'PENDENTE'
 
+export type EvaluationStage = 'STAND BY' | 'ANÁLISE DE PONTO' | 'CONTRATO DE LOCAÇÃO'
+
 export interface Project {
   id: string
   user_id: string
@@ -22,9 +24,13 @@ export interface Project {
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
   pagamento_final_obs: string | null
-  // NOVO: marca se o registro ainda é uma prospecção (aba "Avaliação")
+  // marca se o registro ainda é uma prospecção (aba "Avaliação")
   // ou se já é um projeto de verdade, lançado num mês.
   is_evaluation: boolean
+  // etiqueta usada só enquanto o projeto está em avaliação
+  evaluation_stage: EvaluationStage | null
+  // cor escolhida pelo usuário, usada na barra do gráfico "Por Marca"
+  cor: string | null
   created_at: string
   updated_at: string
 }
@@ -43,15 +49,15 @@ export interface ProjectFormData {
   pagamento_final_obs: string | null
 }
 
-// NOVO: formulário simplificado usado na aba "Projetos em Avaliação".
-// Não tem datas/andamento/pagamento porque isso só passa a existir
-// quando o fechamento é confirmado.
+// formulário simplificado usado na aba "Projetos em Avaliação".
 export interface EvaluationFormData {
   marca: string
   cidade: string
   modalidade: string
   arquiteto: string
   valor: number
+  evaluation_stage: EvaluationStage
+  cor: string
 }
 
 export interface Folder {
@@ -126,6 +132,25 @@ export const STATUS_COLORS: Record<ProjectStatus, string> = {
   'ENTREGUE': 'bg-green-100 text-green-800',
   'PENDENTE': 'bg-red-100 text-red-800',
 }
+
+export const EVALUATION_STAGES: EvaluationStage[] = [
+  'STAND BY',
+  'ANÁLISE DE PONTO',
+  'CONTRATO DE LOCAÇÃO',
+]
+
+export const EVALUATION_STAGE_COLORS: Record<EvaluationStage, string> = {
+  'STAND BY': 'bg-gray-100 text-gray-800',
+  'ANÁLISE DE PONTO': 'bg-blue-100 text-blue-800',
+  'CONTRATO DE LOCAÇÃO': 'bg-purple-100 text-purple-800',
+}
+
+// Paleta de sugestão rápida pro seletor de cor do projeto em avaliação
+export const COLOR_PALETTE = [
+  '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
+  '#10b981', '#06b6d4', '#f97316', '#84cc16',
+  '#ef4444', '#14b8a6', '#6366f1', '#d946ef',
+]
 
 export const DOC_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip']
 export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']

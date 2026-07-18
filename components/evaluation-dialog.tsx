@@ -12,8 +12,16 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { createEvaluationProject, updateEvaluationProject } from '@/app/actions/projects'
-import type { Project, EvaluationFormData } from '@/lib/types'
+import { EVALUATION_STAGES, COLOR_PALETTE } from '@/lib/types'
+import type { Project, EvaluationFormData, EvaluationStage } from '@/lib/types'
 
 interface EvaluationDialogProps {
   open: boolean
@@ -28,6 +36,8 @@ const EMPTY_FORM: EvaluationFormData = {
   modalidade: '',
   arquiteto: '',
   valor: 0,
+  evaluation_stage: 'STAND BY',
+  cor: COLOR_PALETTE[0],
 }
 
 export function EvaluationDialog({ open, onOpenChange, project, onSuccess }: EvaluationDialogProps) {
@@ -42,6 +52,8 @@ export function EvaluationDialog({ open, onOpenChange, project, onSuccess }: Eva
         modalidade: project.modalidade || '',
         arquiteto: project.arquiteto || '',
         valor: Number(project.valor) || 0,
+        evaluation_stage: (project.evaluation_stage as EvaluationStage) || 'STAND BY',
+        cor: project.cor || COLOR_PALETTE[0],
       })
     } else {
       setFormData(EMPTY_FORM)
@@ -121,6 +133,50 @@ export function EvaluationDialog({ open, onOpenChange, project, onSuccess }: Eva
               value={formData.valor}
               onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Etiqueta</Label>
+            <Select
+              value={formData.evaluation_stage}
+              onValueChange={(v) => setFormData({ ...formData, evaluation_stage: v as EvaluationStage })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVALUATION_STAGES.map((stage) => (
+                  <SelectItem key={stage} value={stage}>
+                    {stage}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Cor no gráfico</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              {COLOR_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, cor: color })}
+                  className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                    formData.cor === color ? 'border-foreground' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  aria-label={`Cor ${color}`}
+                />
+              ))}
+              <input
+                type="color"
+                value={formData.cor}
+                onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                className="h-7 w-9 cursor-pointer rounded border bg-transparent p-0.5"
+                title="Escolher outra cor"
+              />
+            </div>
           </div>
         </div>
 

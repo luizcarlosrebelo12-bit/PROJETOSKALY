@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { EvaluationTable } from '@/components/evaluation-table'
+import { EvaluationBrandChart } from '@/components/evaluation-brand-chart'
 import { getEvaluationProjects } from '@/app/actions/projects'
 import type { Project } from '@/lib/types'
 
@@ -42,7 +43,10 @@ export default function AvaliacaoPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : (
-          <EvaluationTable projects={projects} onRefresh={fetchData} />
+          <>
+            <EvaluationBrandChart projects={projects} />
+            <EvaluationTable projects={projects} onRefresh={fetchData} />
+          </>
         )}
       </main>
     </>

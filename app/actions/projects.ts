@@ -443,7 +443,7 @@ export async function deleteYear(year: number) {
 }
 
 // ---------------------------------------------------------------------------
-// NOVO: Projetos em Avaliação (prospecção / aba "Avaliando sala")
+// Projetos em Avaliação (prospecção / aba "Avaliando sala")
 // ---------------------------------------------------------------------------
 
 export async function getEvaluationProjects() {
@@ -510,6 +510,8 @@ export async function createEvaluationProject(formData: EvaluationFormData) {
       valor: formData.valor,
       andamento: 'REUNIÃO',
       is_evaluation: true,
+      evaluation_stage: formData.evaluation_stage,
+      cor: formData.cor,
     })
 
   if (error) {
@@ -534,6 +536,8 @@ export async function updateEvaluationProject(id: string, formData: EvaluationFo
       modalidade: formData.modalidade,
       arquiteto: formData.arquiteto,
       valor: formData.valor,
+      evaluation_stage: formData.evaluation_stage,
+      cor: formData.cor,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -565,6 +569,7 @@ export async function confirmEvaluationProject(
     .from('projects')
     .update({
       is_evaluation: false,
+      evaluation_stage: null,
       year,
       month,
       data_inicio: dataInicio || null,

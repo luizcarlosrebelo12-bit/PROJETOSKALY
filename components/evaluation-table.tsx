@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Project } from '@/lib/types'
+import type { Project, EvaluationStage } from '@/lib/types'
+import { EVALUATION_STAGE_COLORS } from '@/lib/types'
 import { deleteProject } from '@/app/actions/projects'
 import { EvaluationDialog } from './evaluation-dialog'
 import { ConfirmClosureDialog } from './confirm-closure-dialog'
@@ -76,10 +78,12 @@ export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-[28px]"></TableHead>
               <TableHead>Marca</TableHead>
               <TableHead>Cidade</TableHead>
               <TableHead>Modalidade</TableHead>
               <TableHead>Arquiteto</TableHead>
+              <TableHead>Etiqueta</TableHead>
               <TableHead className="text-right">Valor Estimado</TableHead>
               <TableHead className="w-[160px]">Ações</TableHead>
             </TableRow>
@@ -87,17 +91,35 @@ export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
           <TableBody>
             {projects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   Nenhum projeto em avaliação no momento
                 </TableCell>
               </TableRow>
             ) : (
               projects.map((project) => (
                 <TableRow key={project.id}>
+                  <TableCell>
+                    <div
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: project.cor || '#94a3b8' }}
+                      title="Cor no gráfico"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{project.marca || '-'}</TableCell>
                   <TableCell>{project.cidade || '-'}</TableCell>
                   <TableCell>{project.modalidade || '-'}</TableCell>
                   <TableCell>{project.arquiteto || '-'}</TableCell>
+                  <TableCell>
+                    {project.evaluation_stage ? (
+                      <Badge
+                        className={EVALUATION_STAGE_COLORS[project.evaluation_stage as EvaluationStage]}
+                      >
+                        {project.evaluation_stage}
+                      </Badge>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(Number(project.valor))}
                   </TableCell>
