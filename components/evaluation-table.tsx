@@ -1,0 +1,176 @@
+'use client'
+
+import { useState } from 'react'
+import { Pencil, Trash2, CheckCircle2, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import type { Project } from '@/lib/types'
+import { deleteProject } from '@/app/actions/projects'
+import { EvaluationDialog } from './evaluation-dialog'
+import { ConfirmClosureDialog } from './confirm-closure-dialog'
+
+interface EvaluationTableProps {
+  projects: Project[]
+  onRefresh: () => void
+}
+
+export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [confirmingProject, setConfirmingProject] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingProject) return
+    setIsDeleting(true)
+    try {
+      await deleteProject(deletingProject.id)
+      onRefresh()
+    } catch (error) {
+      console.error('Error deleting evaluation project:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeletingProject(null)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">
+          {projects.length}{' '}
+          {projects.length === 1 ? 'projeto em avaliação' : 'projetos em avaliação'}
+        </h2>
+        <Button onClick={() => { setEditingProject(null); setIsDialogOpen(true) }}>
+          <Plus className="mr-2 h-4 w-4" />
+          Novo Projeto em Avaliação
+        </Button>
+      </div>
+
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Marca</TableHead>
+              <TableHead>Cidade</TableHead>
+              <TableHead>Modalidade</TableHead>
+              <TableHead>Arquiteto</TableHead>
+              <TableHead className="text-right">Valor Estimado</TableHead>
+              <TableHead className="w-[160px]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {projects.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  Nenhum projeto em avaliação no momento
+                </TableCell>
+              </TableRow>
+            ) : (
+              projects.map((project) => (
+                <TableRow key={project.id}>
+                  <TableCell className="font-medium">{project.marca || '-'}</TableCell>
+                  <TableCell>{project.cidade || '-'}</TableCell>
+                  <TableCell>{project.modalidade || '-'}</TableCell>
+                  <TableCell>{project.arquiteto || '-'}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(Number(project.valor))}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Confirmar fechamento"
+                        onClick={() => setConfirmingProject(project)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingProject(project)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <EvaluationDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        project={editingProject}
+        onSuccess={() => {
+          setIsDialogOpen(false)
+          setEditingProject(null)
+          onRefresh()
+        }}
+      />
+
+      <ConfirmClosureDialog
+        project={confirmingProject}
+        onOpenChange={(open) => { if (!open) setConfirmingProject(null) }}
+        onSuccess={() => {
+          setConfirmingProject(null)
+          onRefresh()
+        }}
+      />
+
+      <AlertDialog open={!!deletingProject} onOpenChange={() => setDeletingProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o projeto em avaliação &quot;{deletingProject?.marca}&quot;?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

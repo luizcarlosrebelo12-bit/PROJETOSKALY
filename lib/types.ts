@@ -22,6 +22,9 @@ export interface Project {
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
   pagamento_final_obs: string | null
+  // NOVO: marca se o registro ainda é uma prospecção (aba "Avaliação")
+  // ou se já é um projeto de verdade, lançado num mês.
+  is_evaluation: boolean
   created_at: string
   updated_at: string
 }
@@ -38,6 +41,17 @@ export interface ProjectFormData {
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
   pagamento_final_obs: string | null
+}
+
+// NOVO: formulário simplificado usado na aba "Projetos em Avaliação".
+// Não tem datas/andamento/pagamento porque isso só passa a existir
+// quando o fechamento é confirmado.
+export interface EvaluationFormData {
+  marca: string
+  cidade: string
+  modalidade: string
+  arquiteto: string
+  valor: number
 }
 
 export interface Folder {

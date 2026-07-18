@@ -2,7 +2,44 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidateTag } from 'next/cache'
-import type { ProjectFormData } from '@/lib/types'
+import type { ProjectFormData, EvaluationFormData } from '@/lib/types'
+
+// ---------------------------------------------------------------------------
+// Helpers de rollover automático de mês
+// ---------------------------------------------------------------------------
+
+function isCurrentCalendarMonth(year: number, month: number) {
+  const now = new Date()
+  return year === now.getFullYear() && month === now.getMonth() + 1
+}
+
+// Sempre que alguém abre o mês atual (o mês "de verdade", de hoje), qualquer
+// projeto (que não seja de avaliação) que ainda não foi ENTREGUE e que está
+// "preso" em um mês anterior é automaticamente puxado pra cá. Assim, se um
+// projeto não foi entregue em Julho, no dia 1 de Agosto ele já aparece
+// sozinho na tabela de Agosto, sem precisar recadastrar.
+async function rolloverPendingProjects(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  year: number,
+  month: number
+) {
+  const { error } = await supabase
+    .from('projects')
+    .update({ year, month, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('is_evaluation', false)
+    .neq('andamento', 'ENTREGUE')
+    .or(`year.lt.${year},and(year.eq.${year},month.lt.${month})`)
+
+  if (error) {
+    console.error('Error rolling over pending projects:', error)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Projetos "de verdade" (mês a mês)
+// ---------------------------------------------------------------------------
 
 export async function getProjects(year: number, month: number) {
   const supabase = await createClient()
@@ -10,12 +47,17 @@ export async function getProjects(year: number, month: number) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  if (isCurrentCalendarMonth(year, month)) {
+    await rolloverPendingProjects(supabase, user.id, year, month)
+  }
+
   const { data, error } = await supabase
     .from('projects')
     .select('*')
     .eq('user_id', user.id)
     .eq('year', year)
     .eq('month', month)
+    .eq('is_evaluation', false)
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -72,6 +114,7 @@ export async function createProject(year: number, month: number, formData: Proje
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
+      is_evaluation: false,
     })
     .select()
     .single()
@@ -161,6 +204,7 @@ export async function getYearSummary(year: number) {
     .select('month, valor')
     .eq('user_id', user.id)
     .eq('year', year)
+    .eq('is_evaluation', false)
 
   if (error) {
     console.error('Error fetching year summary:', error)
@@ -193,6 +237,7 @@ export async function getYearStats(year: number) {
     .select('*')
     .eq('user_id', user.id)
     .eq('year', year)
+    .eq('is_evaluation', false)
 
   if (error) {
     console.error('Error fetching year stats:', error)
@@ -323,6 +368,7 @@ export async function getMonthlyFinancials(year: number) {
     .select('month, valor, andamento, pagamento_final_valor')
     .eq('user_id', user.id)
     .eq('year', year)
+    .eq('is_evaluation', false)
 
   if (error) {
     console.error('Error fetching financials:', error)
@@ -386,10 +432,165 @@ export async function deleteYear(year: number) {
     .delete()
     .eq('user_id', user.id)
     .eq('year', year)
+    .eq('is_evaluation', false)
 
   if (error) {
     console.error('Error deleting year:', error)
     throw new Error('Erro ao excluir o ano')
+  }
+
+  revalidateTag('projects', 'max')
+}
+
+// ---------------------------------------------------------------------------
+// NOVO: Projetos em Avaliação (prospecção / aba "Avaliando sala")
+// ---------------------------------------------------------------------------
+
+export async function getEvaluationProjects() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching evaluation projects:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function getEvaluationCount() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return 0
+
+  const { count, error } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_evaluation', true)
+
+  if (error) {
+    console.error('Error counting evaluation projects:', error)
+    return 0
+  }
+
+  return count || 0
+}
+
+export async function createEvaluationProject(formData: EvaluationFormData) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const now = new Date()
+
+  const { error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: user.id,
+      // year/month são só placeholder aqui: enquanto is_evaluation = true,
+      // o projeto nunca aparece nas telas de mês (getProjects filtra isso).
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      marca: formData.marca,
+      cidade: formData.cidade,
+      modalidade: formData.modalidade,
+      arquiteto: formData.arquiteto,
+      valor: formData.valor,
+      andamento: 'REUNIÃO',
+      is_evaluation: true,
+    })
+
+  if (error) {
+    console.error('Error creating evaluation project:', error)
+    throw new Error('Erro ao criar projeto em avaliação')
+  }
+
+  revalidateTag('projects', 'max')
+}
+
+export async function updateEvaluationProject(id: string, formData: EvaluationFormData) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      marca: formData.marca,
+      cidade: formData.cidade,
+      modalidade: formData.modalidade,
+      arquiteto: formData.arquiteto,
+      valor: formData.valor,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('is_evaluation', true)
+
+  if (error) {
+    console.error('Error updating evaluation project:', error)
+    throw new Error('Erro ao atualizar projeto em avaliação')
+  }
+
+  revalidateTag('projects', 'max')
+}
+
+// Confirma o fechamento: o registro deixa de ser "avaliação" e vira um
+// projeto de verdade, já caindo direto no mês escolhido.
+export async function confirmEvaluationProject(
+  id: string,
+  year: number,
+  month: number,
+  dataInicio?: string
+) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      is_evaluation: false,
+      year,
+      month,
+      data_inicio: dataInicio || null,
+      andamento: 'LEVANTAMENTO',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('is_evaluation', true)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error confirming evaluation project:', error)
+    throw new Error('Erro ao confirmar fechamento do projeto')
+  }
+
+  // Só agora, que virou projeto de verdade, cria a pasta "Projeto Oficial"
+  if (data) {
+    await supabase.from('folders').insert({
+      user_id: user.id,
+      project_id: data.id,
+      parent_id: null,
+      nome: 'Projeto Oficial',
+      is_oficial: true,
+    })
   }
 
   revalidateTag('projects', 'max')
