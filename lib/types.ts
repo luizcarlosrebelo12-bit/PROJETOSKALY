@@ -6,7 +6,7 @@ export type ProjectStatus =
   | 'ENTREGUE' 
   | 'PENDENTE'
 
-export type EvaluationStage = 'STAND BY' | 'ANÁLISE DE PONTO' | 'CONTRATO DE LOCAÇÃO'
+export type EvaluationStage = 'STAND BY' | 'ANÁLISE DE PONTO' | 'CONTRATO DE LOCAÇÃO' | 'BUSCA POR PONTO'
 
 export interface Project {
   id: string
