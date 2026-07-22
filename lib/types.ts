@@ -137,12 +137,14 @@ export const EVALUATION_STAGES: EvaluationStage[] = [
   'STAND BY',
   'ANÁLISE DE PONTO',
   'CONTRATO DE LOCAÇÃO',
+  'BUSCA POR PONTO',
 ]
 
 export const EVALUATION_STAGE_COLORS: Record<EvaluationStage, string> = {
   'STAND BY': 'bg-gray-100 text-gray-800',
   'ANÁLISE DE PONTO': 'bg-blue-100 text-blue-800',
   'CONTRATO DE LOCAÇÃO': 'bg-purple-100 text-purple-800',
+  'BUSCA POR PONTO': 'bg-orange-100 text-orange-800',
 }
 
 // Paleta de sugestão rápida pro seletor de cor do projeto em avaliação
