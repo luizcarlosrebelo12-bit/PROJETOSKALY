@@ -92,7 +92,11 @@ export function ProjectTable({ projects, year, month, onRefresh }: ProjectTableP
     }
   }
 
-  const totalValue = projects.reduce((sum, p) => sum + Number(p.valor), 0)
+  // Total do Mês agora só considera projetos com andamento === 'ENTREGUE'
+  const totalValue = projects.reduce(
+    (sum, p) => sum + (p.andamento === 'ENTREGUE' ? Number(p.valor) : 0),
+    0
+  )
   const totalPagamentoFinal = projects.reduce(
     (sum, p) => sum + (p.andamento === 'ENTREGUE' ? Number(p.pagamento_final_valor) || 0 : 0),
     0

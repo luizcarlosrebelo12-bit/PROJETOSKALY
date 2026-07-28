@@ -201,7 +201,7 @@ export async function getYearSummary(year: number) {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('month, valor')
+    .select('month, valor, andamento')
     .eq('user_id', user.id)
     .eq('year', year)
     .eq('is_evaluation', false)
@@ -219,7 +219,10 @@ export async function getYearSummary(year: number) {
 
   data?.forEach((project) => {
     const monthIndex = project.month - 1
-    summary[monthIndex].total += Number(project.valor) || 0
+    // Só soma no total quando o projeto já foi ENTREGUE
+    if (project.andamento === 'ENTREGUE') {
+      summary[monthIndex].total += Number(project.valor) || 0
+    }
     summary[monthIndex].count += 1
   })
 
