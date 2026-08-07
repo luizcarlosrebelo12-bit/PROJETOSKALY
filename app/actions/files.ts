@@ -304,9 +304,9 @@ export async function getImageFolders(projectId: string) {
   return data || []
 }
 
-/* ============ DRIVERS (todos os ZIPs de todos os projetos, por ano) ============ */
+/* ============ DRIVERS (todos os arquivos de todos os projetos, por ano) ============ */
 
-export async function getAllZipFiles(year: number) {
+export async function getAllProjectFiles(year: number) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -317,12 +317,11 @@ export async function getAllZipFiles(year: number) {
     .from('files')
     .select('*, projects!inner(marca, cidade, year, month)')
     .eq('user_id', user.id)
-    .eq('tipo', 'zip')
     .eq('projects.year', year)
     .order('data_upload', { ascending: false })
 
   if (error) {
-    console.error('Error fetching zip files:', error)
+    console.error('Error fetching project files:', error)
     return []
   }
 

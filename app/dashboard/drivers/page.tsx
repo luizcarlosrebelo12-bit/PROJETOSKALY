@@ -2,12 +2,22 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { FileArchive, Download, FolderOpen, HardDrive, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  FileArchive,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  Download,
+  FolderOpen,
+  HardDrive,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { getAllZipFiles } from '@/app/actions/files'
+import { getAllProjectFiles } from '@/app/actions/files'
 
-interface ZipFile {
+interface ProjectFile {
   id: string
   nome: string
   pathname: string
@@ -26,24 +36,42 @@ interface ZipFile {
   } | null
 }
 
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+const SHEET_EXTENSIONS = ['xls', 'xlsx', 'csv']
+const ARCHIVE_EXTENSIONS = ['zip', 'rar']
+
+function FileTypeIcon({ tipo }: { tipo: string }) {
+  const ext = tipo.toLowerCase()
+  if (ARCHIVE_EXTENSIONS.includes(ext)) {
+    return <FileArchive className="h-5 w-5 shrink-0 text-amber-500" />
+  }
+  if (IMAGE_EXTENSIONS.includes(ext)) {
+    return <FileImage className="h-5 w-5 shrink-0 text-purple-500" />
+  }
+  if (SHEET_EXTENSIONS.includes(ext)) {
+    return <FileSpreadsheet className="h-5 w-5 shrink-0 text-emerald-500" />
+  }
+  return <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+}
+
 export default function DriversPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
-  const [zipFiles, setZipFiles] = useState<ZipFile[]>([])
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchZips() {
+    async function fetchFiles() {
       setIsLoading(true)
       try {
-        const data = await getAllZipFiles(year)
-        setZipFiles(data as ZipFile[])
+        const data = await getAllProjectFiles(year)
+        setProjectFiles(data as ProjectFile[])
       } catch (error) {
-        console.error('Error fetching zip files:', error)
+        console.error('Error fetching project files:', error)
       } finally {
         setIsLoading(false)
       }
     }
-    fetchZips()
+    fetchFiles()
   }, [year])
 
   // Mesma lógica de resolução de URL usada no files-manager.tsx
@@ -71,9 +99,9 @@ export default function DriversPage() {
 
   // Agrupa por marca e mantém cada grupo ordenado do mais recente pro mais antigo
   const groupedByBrand = useMemo(() => {
-    const groups: Record<string, ZipFile[]> = {}
+    const groups: Record<string, ProjectFile[]> = {}
 
-    zipFiles.forEach((file) => {
+    projectFiles.forEach((file) => {
       const marca = file.projects?.marca || 'Sem marca'
       if (!groups[marca]) groups[marca] = []
       groups[marca].push(file)
@@ -92,7 +120,7 @@ export default function DriversPage() {
       const latestB = new Date(filesB[0].data_upload).getTime()
       return latestB - latestA
     })
-  }, [zipFiles])
+  }, [projectFiles])
 
   return (
     <>
@@ -101,7 +129,7 @@ export default function DriversPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-foreground">Drivers</h1>
             <span className="text-sm text-muted-foreground">
-              {zipFiles.length} {zipFiles.length === 1 ? 'arquivo' : 'arquivos'}
+              {projectFiles.length} {projectFiles.length === 1 ? 'arquivo' : 'arquivos'}
             </span>
           </div>
           <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
@@ -133,14 +161,14 @@ export default function DriversPage() {
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-        ) : zipFiles.length === 0 ? (
+        ) : projectFiles.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center sm:p-8">
             <HardDrive className="mx-auto h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
             <h2 className="mt-3 text-lg font-semibold text-foreground sm:mt-4 sm:text-xl">
-              Nenhum arquivo ZIP em {year}
+              Nenhum arquivo em {year}
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-              Os arquivos ZIP enviados nos projetos deste ano aparecerão aqui, agrupados por marca.
+              Os arquivos enviados nas pastas dos projetos deste ano aparecerão aqui, agrupados por marca.
             </p>
           </div>
         ) : (
@@ -155,7 +183,7 @@ export default function DriversPage() {
               <ul className="divide-y">
                 {files.map((file) => (
                   <li key={file.id} className="flex items-center gap-3 py-3">
-                    <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <FileTypeIcon tipo={file.tipo} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{file.nome}</p>
                       <p className="text-xs text-muted-foreground">
