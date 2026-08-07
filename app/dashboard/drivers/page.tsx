@@ -12,9 +12,12 @@ import {
   HardDrive,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { getAllProjectFiles } from '@/app/actions/files'
 
 interface ProjectFile {
@@ -58,6 +61,8 @@ export default function DriversPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [openBrands, setOpenBrands] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function fetchFiles() {
@@ -73,6 +78,23 @@ export default function DriversPage() {
     }
     fetchFiles()
   }, [year])
+
+  // Fecha todos os grupos de novo ao trocar de ano
+  useEffect(() => {
+    setOpenBrands(new Set())
+  }, [year])
+
+  const toggleBrand = (marca: string) => {
+    setOpenBrands((prev) => {
+      const next = new Set(prev)
+      if (next.has(marca)) {
+        next.delete(marca)
+      } else {
+        next.add(marca)
+      }
+      return next
+    })
+  }
 
   // Mesma lógica de resolução de URL usada no files-manager.tsx
   const getFileUrl = (pathname: string) => {
@@ -97,30 +119,43 @@ export default function DriversPage() {
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
+  // Filtra por nome do arquivo OU pela data (aceita formatos tipo "20/07", "20/07/2026", "julho")
+  const filteredFiles = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return projectFiles
+
+    return projectFiles.filter((file) => {
+      const nameMatch = file.nome.toLowerCase().includes(query)
+      const dateMatch = formatDate(file.data_upload).toLowerCase().includes(query)
+      return nameMatch || dateMatch
+    })
+  }, [projectFiles, search])
+
   // Agrupa por marca e mantém cada grupo ordenado do mais recente pro mais antigo
   const groupedByBrand = useMemo(() => {
     const groups: Record<string, ProjectFile[]> = {}
 
-    projectFiles.forEach((file) => {
+    filteredFiles.forEach((file) => {
       const marca = file.projects?.marca || 'Sem marca'
       if (!groups[marca]) groups[marca] = []
       groups[marca].push(file)
     })
 
-    // Cada grupo já vem ordenado (a query já traz decrescente), mas garantimos aqui também
     Object.keys(groups).forEach((marca) => {
       groups[marca].sort(
         (a, b) => new Date(b.data_upload).getTime() - new Date(a.data_upload).getTime()
       )
     })
 
-    // Ordena as marcas pelo arquivo mais recente de cada uma (marca com upload mais novo primeiro)
     return Object.entries(groups).sort(([, filesA], [, filesB]) => {
       const latestA = new Date(filesA[0].data_upload).getTime()
       const latestB = new Date(filesB[0].data_upload).getTime()
       return latestB - latestA
     })
-  }, [projectFiles])
+  }, [filteredFiles])
+
+  // Enquanto o usuário busca, mostra os grupos com resultado já abertos automaticamente
+  const isSearching = search.trim().length > 0
 
   return (
     <>
@@ -129,7 +164,7 @@ export default function DriversPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-bold text-foreground">Drivers</h1>
             <span className="text-sm text-muted-foreground">
-              {projectFiles.length} {projectFiles.length === 1 ? 'arquivo' : 'arquivos'}
+              {filteredFiles.length} {filteredFiles.length === 1 ? 'arquivo' : 'arquivos'}
             </span>
           </div>
           <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
@@ -157,58 +192,85 @@ export default function DriversPage() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 p-4 md:p-6">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome do arquivo ou data (ex: 20/07/2026)"
+            className="pl-9"
+          />
+        </div>
+
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-        ) : projectFiles.length === 0 ? (
+        ) : filteredFiles.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center sm:p-8">
             <HardDrive className="mx-auto h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
             <h2 className="mt-3 text-lg font-semibold text-foreground sm:mt-4 sm:text-xl">
-              Nenhum arquivo em {year}
+              {isSearching ? 'Nenhum arquivo encontrado' : `Nenhum arquivo em ${year}`}
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-              Os arquivos enviados nas pastas dos projetos deste ano aparecerão aqui, agrupados por marca.
+              {isSearching
+                ? 'Tente buscar por outro nome ou outra data.'
+                : 'Os arquivos enviados nas pastas dos projetos deste ano aparecerão aqui, agrupados por marca.'}
             </p>
           </div>
         ) : (
-          groupedByBrand.map(([marca, files]) => (
-            <Card key={marca} className="p-4 sm:p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground sm:text-lg">{marca}</h2>
-                <span className="text-xs text-muted-foreground sm:text-sm">
-                  {files.length} {files.length === 1 ? 'arquivo' : 'arquivos'}
-                </span>
-              </div>
-              <ul className="divide-y">
-                {files.map((file) => (
-                  <li key={file.id} className="flex items-center gap-3 py-3">
-                    <FileTypeIcon tipo={file.tipo} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{file.nome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(file.data_upload)} · {formatSize(file.tamanho)}
-                        {file.projects?.cidade ? ` · ${file.projects.cidade}` : ''}
-                        {file.responsavel ? ` · ${file.responsavel}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Link href={`/dashboard/projeto/${file.project_id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Abrir projeto">
-                          <FolderOpen className="h-4 w-4 text-primary" />
-                        </Button>
-                      </Link>
-                      <a href={getFileUrl(file.pathname)} target="_blank" rel="noopener noreferrer">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Baixar">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </a>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))
+          groupedByBrand.map(([marca, files]) => {
+            const isOpen = isSearching || openBrands.has(marca)
+            return (
+              <Card key={marca} className="overflow-hidden p-0">
+                <button
+                  onClick={() => toggleBrand(marca)}
+                  className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/50 sm:p-6"
+                >
+                  <h2 className="text-base font-semibold text-foreground sm:text-lg">{marca}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground sm:text-sm">
+                      {files.length} {files.length === 1 ? 'arquivo' : 'arquivos'}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </div>
+                </button>
+                {isOpen && (
+                  <ul className="divide-y border-t px-4 sm:px-6">
+                    {files.map((file) => (
+                      <li key={file.id} className="flex items-center gap-3 py-3">
+                        <FileTypeIcon tipo={file.tipo} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{file.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(file.data_upload)} · {formatSize(file.tamanho)}
+                            {file.projects?.cidade ? ` · ${file.projects.cidade}` : ''}
+                            {file.responsavel ? ` · ${file.responsavel}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Link href={`/dashboard/projeto/${file.project_id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Abrir projeto">
+                              <FolderOpen className="h-4 w-4 text-primary" />
+                            </Button>
+                          </Link>
+                          <a href={getFileUrl(file.pathname)} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Baixar">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </a>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )
+          })
         )}
       </main>
     </>
