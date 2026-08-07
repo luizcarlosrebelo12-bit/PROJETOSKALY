@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
-import { MonthSelector } from '@/components/month-selector'
+import { Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProjectTable } from '@/components/project-table'
 import { YearSummary } from '@/components/year-summary'
 import { StatusChart } from '@/components/status-chart'
@@ -53,14 +52,18 @@ export default function DashboardPage() {
     })
   }
 
-  const handleMonthChange = (newYear: number, newMonth: number) => {
-    setYear(newYear)
-    setMonth(newMonth)
-  }
-
   const handleMonthClick = (clickedMonth: number) => {
     setMonth(clickedMonth)
   }
+
+  const handleToday = () => {
+    const now = new Date()
+    setYear(now.getFullYear())
+    setMonth(now.getMonth() + 1)
+  }
+
+  const isCurrentMonth =
+    year === new Date().getFullYear() && month === new Date().getMonth() + 1
 
   return (
     <>
@@ -81,7 +84,38 @@ export default function DashboardPage() {
               )}
             </Button>
           </div>
-          <MonthSelector year={year} month={month} onChange={handleMonthChange} />
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setYear((y) => y - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-16 text-center text-base font-semibold text-foreground">
+                {year}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setYear((y) => y + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToday}
+              disabled={isCurrentMonth}
+            >
+              Hoje
+            </Button>
+          </div>
         </div>
       </header>
 
