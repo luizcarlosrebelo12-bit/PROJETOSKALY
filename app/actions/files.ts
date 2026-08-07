@@ -304,18 +304,21 @@ export async function getImageFolders(projectId: string) {
   return data || []
 }
 
-/* ============ DRIVERS (todos os ZIPs de todos os projetos) ============ */
+/* ============ DRIVERS (todos os ZIPs de todos os projetos, por ano) ============ */
 
-export async function getAllZipFiles() {
+export async function getAllZipFiles(year: number) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
+  // !inner garante que o filtro em projects.year realmente restrinja as linhas
+  // retornadas (sem !inner, o Supabase só filtraria o objeto embutido, não a linha).
   const { data, error } = await supabase
     .from('files')
-    .select('*, projects(marca, cidade, year, month)')
+    .select('*, projects!inner(marca, cidade, year, month)')
     .eq('user_id', user.id)
     .eq('tipo', 'zip')
+    .eq('projects.year', year)
     .order('data_upload', { ascending: false })
 
   if (error) {

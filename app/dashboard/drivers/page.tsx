@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { FileArchive, Download, FolderOpen, HardDrive } from 'lucide-react'
+import { FileArchive, Download, FolderOpen, HardDrive, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getAllZipFiles } from '@/app/actions/files'
@@ -27,6 +27,7 @@ interface ZipFile {
 }
 
 export default function DriversPage() {
+  const [year, setYear] = useState(() => new Date().getFullYear())
   const [zipFiles, setZipFiles] = useState<ZipFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -34,7 +35,7 @@ export default function DriversPage() {
     async function fetchZips() {
       setIsLoading(true)
       try {
-        const data = await getAllZipFiles()
+        const data = await getAllZipFiles(year)
         setZipFiles(data as ZipFile[])
       } catch (error) {
         console.error('Error fetching zip files:', error)
@@ -43,7 +44,7 @@ export default function DriversPage() {
       }
     }
     fetchZips()
-  }, [])
+  }, [year])
 
   // Mesma lógica de resolução de URL usada no files-manager.tsx
   const getFileUrl = (pathname: string) => {
@@ -97,10 +98,33 @@ export default function DriversPage() {
     <>
       <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <h1 className="text-lg font-bold text-foreground">Drivers</h1>
-          <span className="text-sm text-muted-foreground">
-            {zipFiles.length} {zipFiles.length === 1 ? 'arquivo' : 'arquivos'}
-          </span>
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-bold text-foreground">Drivers</h1>
+            <span className="text-sm text-muted-foreground">
+              {zipFiles.length} {zipFiles.length === 1 ? 'arquivo' : 'arquivos'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setYear((y) => y - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-16 text-center text-base font-semibold text-foreground">
+              {year}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setYear((y) => y + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -113,10 +137,10 @@ export default function DriversPage() {
           <div className="rounded-lg border bg-card p-6 text-center sm:p-8">
             <HardDrive className="mx-auto h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
             <h2 className="mt-3 text-lg font-semibold text-foreground sm:mt-4 sm:text-xl">
-              Nenhum arquivo ZIP encontrado
+              Nenhum arquivo ZIP em {year}
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-              Os arquivos ZIP enviados nos projetos aparecerão aqui, agrupados por marca.
+              Os arquivos ZIP enviados nos projetos deste ano aparecerão aqui, agrupados por marca.
             </p>
           </div>
         ) : (
