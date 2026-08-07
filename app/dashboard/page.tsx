@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { MonthSelector } from '@/components/month-selector'
 import { ProjectTable } from '@/components/project-table'
 import { YearSummary } from '@/components/year-summary'
 import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
+import { Button } from '@/components/ui/button'
 import { getProjects, getYearSummary } from '@/app/actions/projects'
 import type { Project } from '@/lib/types'
 
@@ -15,6 +17,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [summary, setSummary] = useState<{ month: number; total: number; count: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hideValues, setHideValues] = useState(false)
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -36,6 +39,20 @@ export default function DashboardPage() {
     fetchData()
   }, [fetchData])
 
+  // Restaura a preferência de ocultar valores salva no navegador
+  useEffect(() => {
+    const saved = localStorage.getItem('hideValues')
+    if (saved === 'true') setHideValues(true)
+  }, [])
+
+  const toggleHideValues = () => {
+    setHideValues((prev) => {
+      const next = !prev
+      localStorage.setItem('hideValues', String(next))
+      return next
+    })
+  }
+
   const handleMonthChange = (newYear: number, newMonth: number) => {
     setYear(newYear)
     setMonth(newMonth)
@@ -49,7 +66,21 @@ export default function DashboardPage() {
     <>
       <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <h1 className="text-lg font-bold text-foreground">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-foreground">Dashboard</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleHideValues}
+              title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+            >
+              {hideValues ? (
+                <EyeOff className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <Eye className="h-5 w-5 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
           <MonthSelector year={year} month={month} onChange={handleMonthChange} />
         </div>
       </header>
@@ -59,6 +90,7 @@ export default function DashboardPage() {
           summary={summary}
           currentMonth={month}
           onMonthClick={handleMonthClick}
+          hideValues={hideValues}
         />
 
         {isLoading ? (
@@ -72,6 +104,7 @@ export default function DashboardPage() {
               year={year}
               month={month}
               onRefresh={fetchData}
+              hideValues={hideValues}
             />
             <div className="grid gap-6 lg:grid-cols-2">
               <StatusChart projects={projects} />

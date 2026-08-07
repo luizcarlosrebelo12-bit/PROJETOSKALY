@@ -6,10 +6,12 @@ interface YearSummaryProps {
   summary: { month: number; total: number; count: number }[]
   currentMonth: number
   onMonthClick: (month: number) => void
+  hideValues?: boolean
 }
 
-export function YearSummary({ summary, currentMonth, onMonthClick }: YearSummaryProps) {
+export function YearSummary({ summary, currentMonth, onMonthClick, hideValues = false }: YearSummaryProps) {
   const formatCurrency = (value: number) => {
+    if (hideValues) return 'R$ ••••••'
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',

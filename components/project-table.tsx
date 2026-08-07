@@ -33,6 +33,7 @@ interface ProjectTableProps {
   year: number
   month: number
   onRefresh: () => void
+  hideValues?: boolean
 }
 
 // Calcula dias úteis entre duas datas (excluindo sábados e domingos)
@@ -58,13 +59,14 @@ function calculateBusinessDays(startDate: string | null, endDate: string | null)
   return count
 }
 
-export function ProjectTable({ projects, year, month, onRefresh }: ProjectTableProps) {
+export function ProjectTable({ projects, year, month, onRefresh, hideValues = false }: ProjectTableProps) {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const formatCurrency = (value: number) => {
+    if (hideValues) return 'R$ ••••••'
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',

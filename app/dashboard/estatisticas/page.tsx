@@ -2,11 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Users, Building2, Clock } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Users, Building2, Clock, Trash2 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { getYearStats } from '@/app/actions/projects'
+import { Input } from '@/components/ui/input'
+import { getYearStats, deleteYear } from '@/app/actions/projects'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#f97316', '#84cc16', '#ef4444', '#14b8a6']
 
@@ -22,21 +33,41 @@ export default function EstatisticasPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [stats, setStats] = useState<YearStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
-    async function fetchStats() {
-      setIsLoading(true)
-      try {
-        const data = await getYearStats(year)
-        setStats(data)
-      } catch (error) {
-        console.error('Error fetching stats:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
     fetchStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year])
+
+  async function fetchStats() {
+    setIsLoading(true)
+    try {
+      const data = await getYearStats(year)
+      setStats(data)
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteYear = async () => {
+    if (confirmText !== String(year)) return
+    setIsDeleting(true)
+    try {
+      await deleteYear(year)
+      await fetchStats()
+    } catch (error) {
+      console.error('Error deleting year:', error)
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+      setConfirmText('')
+    }
+  }
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -80,26 +111,39 @@ export default function EstatisticasPage() {
       <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
           <h1 className="text-lg font-bold text-foreground">Estatísticas</h1>
-          <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setYear(year - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-16 text-center text-base font-semibold text-foreground">
-              {year}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setYear(year + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-2">
+            {stats && stats.totalProjects > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-destructive/40 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:gap-2 sm:text-sm"
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                Excluir Ano
+              </Button>
+            )}
+            <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setYear(year - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-16 text-center text-base font-semibold text-foreground">
+                {year}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setYear(year + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -297,6 +341,44 @@ export default function EstatisticasPage() {
           </>
         )}
       </main>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setConfirmText('')
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir todos os dados de {year}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai apagar <strong>permanentemente</strong> todos os projetos de {year} do banco de dados,
+              junto com as pastas, arquivos e imagens 3D vinculados a eles. Essa ação libera espaço no banco,
+              mas <strong>não pode ser desfeita</strong>.
+              <br />
+              <br />
+              Para confirmar, digite <strong>{year}</strong> abaixo:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={String(year)}
+            autoComplete="off"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteYear}
+              disabled={isDeleting || confirmText !== String(year)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir tudo'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
