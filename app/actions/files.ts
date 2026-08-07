@@ -303,3 +303,25 @@ export async function getImageFolders(projectId: string) {
   }
   return data || []
 }
+
+/* ============ DRIVERS (todos os ZIPs de todos os projetos) ============ */
+
+export async function getAllZipFiles() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('files')
+    .select('*, projects(marca, cidade, year, month)')
+    .eq('user_id', user.id)
+    .eq('tipo', 'zip')
+    .order('data_upload', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching zip files:', error)
+    return []
+  }
+
+  return data || []
+}

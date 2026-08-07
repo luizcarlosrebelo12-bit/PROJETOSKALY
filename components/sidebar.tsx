@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   BarChart3,
   ClipboardList,
+  HardDrive,
   LogOut,
   Moon,
   Sun,
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/estatisticas', label: 'Estatísticas', icon: BarChart3 },
   { href: '/dashboard/avaliacao', label: 'Avaliação', icon: ClipboardList },
+  { href: '/dashboard/drivers', label: 'Drivers', icon: HardDrive },
 ]
 
 export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
