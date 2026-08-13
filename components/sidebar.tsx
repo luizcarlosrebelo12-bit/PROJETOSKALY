@@ -135,8 +135,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
       {/* Barra inferior mobile estilo Instagram */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t bg-sidebar text-sidebar-foreground pb-[env(safe-area-inset-bottom)] pt-1 md:hidden"
-        style={{ height: '64px' }}
+        className="fixed inset-x-0 bottom-0 z-30 flex min-h-[64px] items-center justify-around border-t bg-sidebar text-sidebar-foreground pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
       >
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)

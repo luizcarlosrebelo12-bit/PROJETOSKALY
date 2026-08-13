@@ -74,7 +74,8 @@ export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      {/* ===== TABELA — visível apenas no desktop ===== */}
+      <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -154,6 +155,83 @@ export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* ===== CARDS — visível apenas no mobile ===== */}
+      <div className="space-y-3 md:hidden">
+        {projects.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+            Nenhum projeto em avaliação no momento
+          </div>
+        ) : (
+          projects.map((project) => (
+            <div key={project.id} className="rounded-lg border bg-card p-4 space-y-3">
+              {/* Cabeçalho do card */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <div
+                    className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: project.cor || '#94a3b8' }}
+                    title="Cor no gráfico"
+                  />
+                  <div>
+                    <h3 className="font-semibold text-foreground">{project.marca || '-'}</h3>
+                    <p className="text-sm text-muted-foreground">{project.cidade || '-'}</p>
+                  </div>
+                </div>
+                {project.evaluation_stage && (
+                  <Badge
+                    className={EVALUATION_STAGE_COLORS[project.evaluation_stage as EvaluationStage]}
+                  >
+                    {project.evaluation_stage}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Grid de informações */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm border-t pt-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Modalidade</p>
+                  <p className="font-medium">{project.modalidade || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Arquiteto</p>
+                  <p className="font-medium">{project.arquiteto || '-'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground">Valor Estimado</p>
+                  <p className="font-medium">{formatCurrency(Number(project.valor))}</p>
+                </div>
+              </div>
+
+              {/* Ações */}
+              <div className="flex items-center justify-end gap-1 border-t pt-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Confirmar fechamento"
+                  onClick={() => setConfirmingProject(project)}
+                >
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeletingProject(project)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <EvaluationDialog
