@@ -136,10 +136,11 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
         <span className="text-sm font-bold">Gestão de Projetos</span>
       </div>
 
-      {/* Sidebar desktop — igual antes */}
-      <aside className="hidden w-64 shrink-0 md:block">
-        <div className="sticky top-0 h-screen">{content}</div>
-      </aside>
+      {/* Sidebar desktop — igual antes
+<aside className="hidden w-64 shrink-0 md:block">
+  <div className="sticky top-0 h-screen">{content}</div>
+</aside>
+*/}
 
       {/* Barra inferior mobile estilo Instagram */}
       <nav
