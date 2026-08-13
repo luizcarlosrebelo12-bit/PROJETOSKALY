@@ -128,14 +128,6 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
   return (
     <>
-      {/* Topbar mobile — fixed (não sticky) pra não virar item do flex do layout pai */}
-      <div className="fixed inset-x-0 top-0 z-20 flex items-center gap-2 border-b bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white p-0.5">
-          <Image src="/logo.png" alt="KM Logo" width={24} height={24} className="rounded-sm" />
-        </div>
-        <span className="text-sm font-bold">Gestão de Projetos</span>
-      </div>
-
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 md:block">
         <div className="sticky top-0 h-screen">{content}</div>
