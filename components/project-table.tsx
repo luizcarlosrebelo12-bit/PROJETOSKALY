@@ -39,15 +39,15 @@ interface ProjectTableProps {
 // Calcula dias úteis entre duas datas (excluindo sábados e domingos)
 function calculateBusinessDays(startDate: string | null, endDate: string | null): number | null {
   if (!startDate || !endDate) return null
-  
+
   const start = new Date(startDate + 'T00:00:00')
   const end = new Date(endDate + 'T00:00:00')
-  
+
   if (end < start) return null
-  
+
   let count = 0
   const current = new Date(start)
-  
+
   while (current <= end) {
     const dayOfWeek = current.getDay()
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -55,7 +55,7 @@ function calculateBusinessDays(startDate: string | null, endDate: string | null)
     }
     current.setDate(current.getDate() + 1)
   }
-  
+
   return count
 }
 
@@ -116,7 +116,8 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      {/* ===== TABELA — visível apenas no desktop ===== */}
+      <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -214,6 +215,109 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* ===== CARDS — visível apenas no mobile ===== */}
+      <div className="space-y-3 md:hidden">
+        {projects.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+            Nenhum projeto cadastrado neste mês
+          </div>
+        ) : (
+          <>
+            {projects.map((project, index) => {
+              const businessDays = calculateBusinessDays(project.data_inicio, project.data_final)
+              return (
+                <div key={project.id} className="rounded-lg border bg-card p-4 space-y-3">
+                  {/* Cabeçalho do card */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">#{index + 1}</p>
+                      <h3 className="font-semibold text-foreground">{project.marca || '-'}</h3>
+                      <p className="text-sm text-muted-foreground">{project.cidade || '-'}</p>
+                    </div>
+                    <Badge className={STATUS_COLORS[project.andamento as ProjectStatus]}>
+                      {project.andamento}
+                    </Badge>
+                  </div>
+
+                  {/* Grid de informações */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm border-t pt-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Início</p>
+                      <p className="font-medium">{formatDate(project.data_inicio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Final</p>
+                      <p className="font-medium">{formatDate(project.data_final)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Dias Úteis</p>
+                      <p className="font-medium">
+                        {businessDays !== null ? `${businessDays} dias` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Modalidade</p>
+                      <p className="font-medium">{project.modalidade || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Arquiteto</p>
+                      <p className="font-medium">{project.arquiteto || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Valor</p>
+                      <p className="font-medium">{formatCurrency(Number(project.valor))}</p>
+                    </div>
+                    {project.andamento === 'ENTREGUE' && project.pagamento_final_valor && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Pag. Final</p>
+                        <p className="font-medium">
+                          {formatCurrency(Number(project.pagamento_final_valor))}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex items-center justify-end gap-1 border-t pt-3">
+                    <Link href={`/dashboard/projeto/${project.id}`}>
+                      <Button variant="ghost" size="icon" title="Arquivos e Imagens 3D">
+                        <FolderOpen className="h-4 w-4 text-primary" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeletingProject(project)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Total do mês no mobile */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-1">
+              <div className="flex justify-between text-sm font-semibold">
+                <span>Total do Mês:</span>
+                <span>{formatCurrency(totalValue)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span>Pag. Final:</span>
+                <span>{formatCurrency(totalPagamentoFinal)}</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <ProjectDialog

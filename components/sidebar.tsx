@@ -128,7 +128,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
   return (
     <>
-      {/* Topbar mobile — fixed em vez de sticky pra não virar item do flex do layout pai */}
+      {/* Topbar mobile — fixed (não sticky) pra não virar item do flex do layout pai */}
       <div className="fixed inset-x-0 top-0 z-20 flex items-center gap-2 border-b bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white p-0.5">
           <Image src="/logo.png" alt="KM Logo" width={24} height={24} className="rounded-sm" />
@@ -143,7 +143,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
       {/* Barra inferior mobile estilo Instagram */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t bg-sidebar text-sidebar-foreground pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t bg-sidebar text-sidebar-foreground pb-[env(safe-area-inset-bottom)] pt-1 md:hidden"
         style={{ height: '64px' }}
       >
         {NAV_ITEMS.map((item) => {
@@ -165,7 +165,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
                 {item.href === '/dashboard/avaliacao' && evaluationCount > 0 && (
                   <Badge
                     variant="secondary"
-                    className="absolute -right-2 -top-2 h-4 min-w-4 justify-center px-1 text-[9px]"
+                    className="absolute -right-1.5 -top-1 h-4 min-w-4 justify-center px-1 text-[9px]"
                   >
                     {evaluationCount}
                   </Badge>
