@@ -13,7 +13,7 @@ import {
   LogOut,
   Moon,
   Sun,
-  Menu,
+  MoreHorizontal,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,7 +36,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -51,6 +51,9 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
   }
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
 
   const content = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -74,18 +77,14 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV_ITEMS.map((item) => {
-          const isActive =
-            item.href === '/dashboard'
-              ? pathname === '/dashboard'
-              : pathname.startsWith(item.href)
+          const active = isActive(item.href)
           const Icon = item.icon
           return (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
               className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
+                active
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
               }`}
@@ -129,46 +128,111 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
 
   return (
     <>
-      {/* Topbar mobile */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white p-0.5">
-            <Image src="/logo.png" alt="KM Logo" width={24} height={24} className="rounded-sm" />
-          </div>
-          <span className="text-sm font-bold">Gestão de Projetos</span>
+      {/* Topbar mobile — só logo, sem botão de menu */}
+      <div className="sticky top-0 z-20 flex items-center gap-2 border-b bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white p-0.5">
+          <Image src="/logo.png" alt="KM Logo" width={24} height={24} className="rounded-sm" />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-sidebar-foreground hover:bg-sidebar-accent/60"
-          onClick={() => setMobileOpen(true)}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        <span className="text-sm font-bold">Gestão de Projetos</span>
       </div>
 
-      {/* Sidebar desktop */}
+      {/* Sidebar desktop — igual antes */}
       <aside className="hidden w-64 shrink-0 md:block">
         <div className="sticky top-0 h-screen">{content}</div>
       </aside>
 
-      {/* Drawer mobile */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-30 md:hidden">
+      {/* Barra inferior mobile estilo Instagram */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t bg-sidebar text-sidebar-foreground pb-[env(safe-area-inset-bottom)] md:hidden"
+        style={{ height: '64px' }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(item.href)
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="relative flex h-full flex-1 flex-col items-center justify-center gap-0.5"
+            >
+              <span className="relative">
+                <Icon
+                  className={`h-6 w-6 transition-transform ${
+                    active ? 'text-sidebar-accent-foreground scale-110' : 'text-sidebar-foreground/60'
+                  }`}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+                {item.href === '/dashboard/avaliacao' && evaluationCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="absolute -right-2 -top-2 h-4 min-w-4 justify-center px-1 text-[9px]"
+                  >
+                    {evaluationCount}
+                  </Badge>
+                )}
+              </span>
+              <span
+                className={`text-[10px] ${
+                  active ? 'text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground/60'
+                }`}
+              >
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
+
+        {/* Botão "mais" — tema e sair */}
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="flex h-full flex-1 flex-col items-center justify-center gap-0.5"
+        >
+          <MoreHorizontal className="h-6 w-6 text-sidebar-foreground/60" />
+          <span className="text-[10px] text-sidebar-foreground/60">Mais</span>
+        </button>
+      </nav>
+
+      {/* Sheet "mais" — tema / sair, abre de baixo pra cima */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
+            onClick={() => setMoreOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-64">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-2 z-10 text-sidebar-foreground hover:bg-sidebar-accent/60"
-              onClick={() => setMobileOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            {content}
+          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-sidebar text-sidebar-foreground pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-3">
+              <span className="text-sm font-semibold">Mais opções</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMoreOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="space-y-1 px-3 py-3">
+              {mounted && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    toggleTheme()
+                    setMoreOpen(false)
+                  }}
+                  className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       )}
