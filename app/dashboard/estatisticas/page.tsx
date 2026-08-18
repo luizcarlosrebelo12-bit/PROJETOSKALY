@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Users, Building2, Clock, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Users, Building2, Clock, Trash2, Eye, EyeOff } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { getYearStats, deleteYear } from '@/app/actions/projects'
+import { useHideValues } from '@/components/hide-values-provider'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ export default function EstatisticasPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const { hideValues, toggleHideValues } = useHideValues()
 
   useEffect(() => {
     fetchStats()
@@ -70,6 +72,7 @@ export default function EstatisticasPage() {
   }
 
   const formatCurrency = (value: number) => {
+    if (hideValues) return 'R$ ••••'
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -110,7 +113,21 @@ export default function EstatisticasPage() {
     <>
       <header className="sticky top-0 z-10 border-b bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <h1 className="text-lg font-bold text-foreground">Estatísticas</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-foreground">Estatísticas</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleHideValues}
+              title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
+            >
+              {hideValues ? (
+                <EyeOff className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <Eye className="h-5 w-5 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             {stats && stats.totalProjects > 0 && (
               <Button

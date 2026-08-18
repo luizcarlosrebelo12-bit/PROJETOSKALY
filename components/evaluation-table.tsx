@@ -31,9 +31,10 @@ import { ConfirmClosureDialog } from './confirm-closure-dialog'
 interface EvaluationTableProps {
   projects: Project[]
   onRefresh: () => void
+  hideValues: boolean
 }
 
-export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
+export function EvaluationTable({ projects, onRefresh, hideValues }: EvaluationTableProps) {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [confirmingProject, setConfirmingProject] = useState<Project | null>(null)
@@ -41,6 +42,7 @@ export function EvaluationTable({ projects, onRefresh }: EvaluationTableProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const formatCurrency = (value: number) => {
+    if (hideValues) return 'R$ ••••'
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
