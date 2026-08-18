@@ -8,6 +8,7 @@ import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
 import { Button } from '@/components/ui/button'
 import { getProjects, getYearSummary } from '@/app/actions/projects'
+import { useHideValues } from '@/components/hide-values-provider'
 import type { Project } from '@/lib/types'
 
 export default function DashboardPage() {
@@ -16,7 +17,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [summary, setSummary] = useState<{ month: number; total: number; count: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [hideValues, setHideValues] = useState(false)
+  const { hideValues, toggleHideValues } = useHideValues()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -37,20 +38,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
-
-  // Restaura a preferência de ocultar valores salva no navegador
-  useEffect(() => {
-    const saved = localStorage.getItem('hideValues')
-    if (saved === 'true') setHideValues(true)
-  }, [])
-
-  const toggleHideValues = () => {
-    setHideValues((prev) => {
-      const next = !prev
-      localStorage.setItem('hideValues', String(next))
-      return next
-    })
-  }
 
   const handleMonthClick = (clickedMonth: number) => {
     setMonth(clickedMonth)
