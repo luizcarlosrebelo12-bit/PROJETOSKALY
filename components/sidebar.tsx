@@ -213,29 +213,29 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
       {/* SIDEBAR DESKTOP */}
       {/* ========================================================= */}
 
-      <aside
-        className={`hidden shrink-0 transition-all duration-200 md:block ${
-          collapsed ? 'w-16' : 'w-64'
-        }`}
-      >
-        <div className="relative h-screen sticky top-0">
-          {content(collapsed)}
+<aside
+  className={`hidden shrink-0 overflow-visible transition-all duration-200 md:block ${
+    collapsed ? 'w-16' : 'w-64'
+  }`}
+>
+  <div className="relative h-screen overflow-visible sticky top-0">
+    {content(collapsed)}
 
-          {/* Botão recolher/expandir */}
-          <Button
-            variant="secondary"
-            size="icon"
-            className="absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border shadow-sm"
-            onClick={() => setCollapsed((current) => !current)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronLeft className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        </div>
-      </aside>
+    {/* Botão recolher/expandir */}
+    <Button
+      variant="secondary"
+      size="icon"
+      className="absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border shadow-md"
+      onClick={() => setCollapsed((current) => !current)}
+    >
+      {collapsed ? (
+        <ChevronRight className="h-3.5 w-3.5" />
+      ) : (
+        <ChevronLeft className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  </div>
+</aside>
 
       {/* ========================================================= */}
       {/* BARRA INFERIOR MOBILE */}
