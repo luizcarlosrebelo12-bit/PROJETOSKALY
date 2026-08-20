@@ -118,27 +118,39 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
 
       {/* ===== TABELA — visível apenas no desktop ===== */}
       <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
-        <Table>
+        <Table className="table-fixed text-xs">
+          <colgroup>
+            <col className="w-[4%]" />   {/* N */}
+            <col className="w-[10%]" />  {/* Marca */}
+            <col className="w-[11%]" />  {/* Cidade */}
+            <col className="w-[13%]" />  {/* Período (Início → Final) */}
+            <col className="w-[7%]" />   {/* Dias Úteis */}
+            <col className="w-[9%]" />   {/* Modalidade */}
+            <col className="w-[9%]" />   {/* Arquiteto */}
+            <col className="w-[10%]" />  {/* Valor */}
+            <col className="w-[10%]" />  {/* Pag. Final */}
+            <col className="w-[10%]" />  {/* Andamento */}
+            <col className="w-[7%]" />   {/* Ações */}
+          </colgroup>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[50px]">N</TableHead>
-              <TableHead>Marca</TableHead>
-              <TableHead>Cidade</TableHead>
-              <TableHead>Início</TableHead>
-              <TableHead>Final</TableHead>
-              <TableHead>Dias Úteis</TableHead>
-              <TableHead>Modalidade</TableHead>
-              <TableHead>Arquiteto</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="text-right">Pag. Final</TableHead>
-              <TableHead>Andamento</TableHead>
-              <TableHead className="w-[130px]">Ações</TableHead>
+              <TableHead className="px-2 py-2">N</TableHead>
+              <TableHead className="px-2 py-2">Marca</TableHead>
+              <TableHead className="px-2 py-2">Cidade</TableHead>
+              <TableHead className="px-2 py-2">Período</TableHead>
+              <TableHead className="px-2 py-2">Dias</TableHead>
+              <TableHead className="px-2 py-2">Modalidade</TableHead>
+              <TableHead className="px-2 py-2">Arquiteto</TableHead>
+              <TableHead className="px-2 py-2 text-right">Valor</TableHead>
+              <TableHead className="px-2 py-2 text-right">Pag. Final</TableHead>
+              <TableHead className="px-2 py-2">Andamento</TableHead>
+              <TableHead className="px-2 py-2">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {projects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                   Nenhum projeto cadastrado neste mês
                 </TableCell>
               </TableRow>
@@ -147,51 +159,62 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                 const businessDays = calculateBusinessDays(project.data_inicio, project.data_final)
                 return (
                   <TableRow key={project.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{project.marca || '-'}</TableCell>
-                    <TableCell>{project.cidade || '-'}</TableCell>
-                    <TableCell>{formatDate(project.data_inicio)}</TableCell>
-                    <TableCell>{formatDate(project.data_final)}</TableCell>
-                    <TableCell>
+                    <TableCell className="px-2 py-2 font-medium">{index + 1}</TableCell>
+                    <TableCell className="px-2 py-2 truncate" title={project.marca || '-'}>
+                      {project.marca || '-'}
+                    </TableCell>
+                    <TableCell className="px-2 py-2 truncate" title={project.cidade || '-'}>
+                      {project.cidade || '-'}
+                    </TableCell>
+                    <TableCell className="px-2 py-2 whitespace-nowrap">
+                      {formatDate(project.data_inicio)} → {formatDate(project.data_final)}
+                    </TableCell>
+                    <TableCell className="px-2 py-2">
                       {businessDays !== null ? (
-                        <span className="font-medium">{businessDays} dias</span>
+                        <span className="font-medium">{businessDays}d</span>
                       ) : '-'}
                     </TableCell>
-                    <TableCell>{project.modalidade || '-'}</TableCell>
-                    <TableCell>{project.arquiteto || '-'}</TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="px-2 py-2 truncate" title={project.modalidade || '-'}>
+                      {project.modalidade || '-'}
+                    </TableCell>
+                    <TableCell className="px-2 py-2 truncate" title={project.arquiteto || '-'}>
+                      {project.arquiteto || '-'}
+                    </TableCell>
+                    <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
                       {formatCurrency(Number(project.valor))}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
                       {project.andamento === 'ENTREGUE' && project.pagamento_final_valor
                         ? formatCurrency(Number(project.pagamento_final_valor))
                         : '-'}
                     </TableCell>
-                    <TableCell>
-                      <Badge className={STATUS_COLORS[project.andamento as ProjectStatus]}>
+                    <TableCell className="px-2 py-2">
+                      <Badge className={`${STATUS_COLORS[project.andamento as ProjectStatus]} text-[10px] px-1.5 py-0.5`}>
                         {project.andamento}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                    <TableCell className="px-1 py-2">
+                      <div className="flex items-center gap-0.5">
                         <Link href={`/dashboard/projeto/${project.id}`}>
-                          <Button variant="ghost" size="icon" title="Arquivos e Imagens 3D">
-                            <FolderOpen className="h-4 w-4 text-primary" />
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Arquivos e Imagens 3D">
+                            <FolderOpen className="h-3.5 w-3.5 text-primary" />
                           </Button>
                         </Link>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7"
                           onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7"
                           onClick={() => setDeletingProject(project)}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -201,13 +224,13 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
             )}
             {projects.length > 0 && (
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell colSpan={8} className="text-right">
+                <TableCell colSpan={7} className="px-2 py-2 text-right">
                   Total do Mês:
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="px-2 py-2 text-right">
                   {formatCurrency(totalValue)}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="px-2 py-2 text-right">
                   {formatCurrency(totalPagamentoFinal)}
                 </TableCell>
                 <TableCell colSpan={2} />
