@@ -251,7 +251,7 @@ export default function EstatisticasPage() {
                     </ResponsiveContainer>
                   </div>
                   <div className="flex w-full flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm">
-                    {stats.byBrand.slice(0, 6).map((item, index) => (
+                    {stats.byBrand.map((item, index) => (
                       <div key={index} className="flex max-w-full items-center gap-1.5" title={item.name}>
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
@@ -263,11 +263,6 @@ export default function EstatisticasPage() {
                       </div>
                     ))}
                   </div>
-                  {stats.byBrand.length > 6 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{stats.byBrand.length - 6} outras
-                    </span>
-                  )}
                 </div>
               </Card>
 
@@ -299,7 +294,7 @@ export default function EstatisticasPage() {
                     </ResponsiveContainer>
                   </div>
                   <div className="flex w-full flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm">
-                    {stats.byArchitect.slice(0, 6).map((item, index) => (
+                    {stats.byArchitect.map((item, index) => (
                       <div key={index} className="flex max-w-full items-center gap-1.5" title={item.name}>
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
@@ -311,11 +306,6 @@ export default function EstatisticasPage() {
                       </div>
                     ))}
                   </div>
-                  {stats.byArchitect.length > 6 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{stats.byArchitect.length - 6} outros
-                    </span>
-                  )}
                 </div>
               </Card>
             </div>
