@@ -80,13 +80,6 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
     return `${day}/${month}/${year}`
   }
 
-  // Versão curta (sem ano) para a coluna Período, que já convive com o seletor de ano no topo
-  const formatDateShort = (date: string | null) => {
-    if (!date) return '-'
-    const [, month, day] = date.split('-')
-    return `${day}/${month}`
-  }
-
   const handleDelete = async () => {
     if (!deletingProject) return
     setIsDeleting(true)
@@ -125,19 +118,19 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
 
       {/* ===== TABELA — visível apenas no desktop ===== */}
       <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
-        <Table className="w-full table-fixed text-xs">
+        <Table className="table-fixed text-xs">
           <colgroup>
-            <col className="w-[3%]" />   {/* N */}
+            <col className="w-[4%]" />   {/* N */}
             <col className="w-[10%]" />  {/* Marca */}
             <col className="w-[11%]" />  {/* Cidade */}
-            <col className="w-[15%]" />  {/* Período (Início → Final) */}
-            <col className="w-[5%]" />   {/* Dias Úteis */}
+            <col className="w-[13%]" />  {/* Período (Início → Final) */}
+            <col className="w-[7%]" />   {/* Dias Úteis */}
             <col className="w-[9%]" />   {/* Modalidade */}
             <col className="w-[9%]" />   {/* Arquiteto */}
             <col className="w-[10%]" />  {/* Valor */}
             <col className="w-[10%]" />  {/* Pag. Final */}
             <col className="w-[10%]" />  {/* Andamento */}
-            <col className="w-[8%]" />   {/* Ações */}
+            <col className="w-[7%]" />   {/* Ações */}
           </colgroup>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -173,11 +166,8 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                     <TableCell className="px-2 py-2 truncate" title={project.cidade || '-'}>
                       {project.cidade || '-'}
                     </TableCell>
-                    <TableCell
-                      className="px-2 py-2 whitespace-nowrap"
-                      title={`${formatDate(project.data_inicio)} → ${formatDate(project.data_final)}`}
-                    >
-                      {formatDateShort(project.data_inicio)} → {formatDateShort(project.data_final)}
+                    <TableCell className="px-2 py-2 whitespace-nowrap">
+                      {formatDate(project.data_inicio)} → {formatDate(project.data_final)}
                     </TableCell>
                     <TableCell className="px-2 py-2">
                       {businessDays !== null ? (
@@ -199,8 +189,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                         : '-'}
                     </TableCell>
                     <TableCell className="px-2 py-2">
-                      <Badge className={`${STATUS_COLORS[project.andamento as ProjectStatus]} text-[10px] px-1.5 py-0.5`}>
-                        {project.andamento}
+<Badge className={`${STATUS_COLORS[project.andamento as ProjectStatus]} text-[9px] px-1.5 py-0.5 font-medium`}>                        {project.andamento}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-1 py-2">
