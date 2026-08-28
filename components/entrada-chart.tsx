@@ -34,6 +34,18 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     }).format(value)
   }
 
+  // Versão curta usada só no rótulo em cima da barra, pra não colidir
+  // quando dois meses seguidos têm entrada (ex: "R$50" e "R$1,3 mil")
+  const formatCurrencyCompact = (value: number) => {
+    if (hideValues) return '••••'
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value)
+  }
+
   const data = summary.map((m) => ({
     name: MONTHS_SHORT[m.month - 1],
     count: m.count,
@@ -51,7 +63,11 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
       </h3>
       <div className="h-[220px] w-full sm:h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 24, right: 8, left: -20, bottom: 0 }}>
+          <BarChart
+            data={data}
+            margin={{ top: 24, right: 8, left: -20, bottom: 0 }}
+            barCategoryGap="30%"
+          >
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
             <XAxis
               dataKey="name"
@@ -83,7 +99,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               labelStyle={{ color: 'hsl(var(--popover-foreground))', marginBottom: 4 }}
               itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={28}>
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
@@ -93,8 +109,9 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               <LabelList
                 dataKey="total"
                 position="top"
-                formatter={(value: number) => (value > 0 && !hideValues ? formatCurrency(value) : '')}
-                style={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
+                offset={6}
+                formatter={(value: number) => (value > 0 && !hideValues ? formatCurrencyCompact(value) : '')}
+                style={{ fill: 'hsl(var(--foreground))', fontSize: 9, fontWeight: 600 }}
               />
             </Bar>
           </BarChart>
