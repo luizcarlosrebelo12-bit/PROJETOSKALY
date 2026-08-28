@@ -40,6 +40,9 @@ const emptyForm: ProjectFormData = {
   arquiteto: '',
   valor: 0,
   andamento: 'REUNIÃO',
+  entrada_valor: null,
+  entrada_data: null,
+  entrada_obs: null,
   pagamento_final_valor: null,
   pagamento_final_data: null,
   pagamento_final_obs: null,
@@ -67,6 +70,9 @@ export function ProjectDialog({
         arquiteto: project.arquiteto || '',
         valor: Number(project.valor) || 0,
         andamento: project.andamento,
+        entrada_valor: project.entrada_valor != null ? Number(project.entrada_valor) : null,
+        entrada_data: project.entrada_data || null,
+        entrada_obs: project.entrada_obs || null,
         pagamento_final_valor: project.pagamento_final_valor != null ? Number(project.pagamento_final_valor) : null,
         pagamento_final_data: project.pagamento_final_data || null,
         pagamento_final_obs: project.pagamento_final_obs || null,
@@ -198,6 +204,58 @@ export function ProjectDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Entrada — independe do status, pode ser lançada a qualquer momento */}
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-foreground">Entrada</h3>
+              <span className="text-xs text-muted-foreground">
+                Valor que caiu na conta como entrada do projeto
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="entrada_valor">Valor da Entrada (R$)</Label>
+                <Input
+                  id="entrada_valor"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.entrada_valor ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      entrada_valor: e.target.value === '' ? null : parseFloat(e.target.value),
+                    })
+                  }
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="entrada_data">Data da Entrada</Label>
+                <Input
+                  id="entrada_data"
+                  type="date"
+                  value={formData.entrada_data ?? ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, entrada_data: e.target.value || null })
+                  }
+                />
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="entrada_obs">Observações</Label>
+              <Textarea
+                id="entrada_obs"
+                value={formData.entrada_obs ?? ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, entrada_obs: e.target.value || null })
+                }
+                placeholder="Ex: 50% de entrada via PIX"
+                rows={2}
+              />
             </div>
           </div>
 

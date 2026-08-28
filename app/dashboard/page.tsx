@@ -6,8 +6,9 @@ import { ProjectTable } from '@/components/project-table'
 import { YearSummary } from '@/components/year-summary'
 import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
+import { EntradaChart } from '@/components/entrada-chart'
 import { Button } from '@/components/ui/button'
-import { getProjects, getYearSummary } from '@/app/actions/projects'
+import { getProjects, getYearSummary, getEntradaSummary } from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import type { Project } from '@/lib/types'
 
@@ -16,18 +17,21 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(() => new Date().getMonth() + 1)
   const [projects, setProjects] = useState<Project[]>([])
   const [summary, setSummary] = useState<{ month: number; total: number; count: number }[]>([])
+  const [entradaSummary, setEntradaSummary] = useState<{ month: number; count: number; total: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { hideValues, toggleHideValues } = useHideValues()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [projectsData, summaryData] = await Promise.all([
+      const [projectsData, summaryData, entradaData] = await Promise.all([
         getProjects(year, month),
         getYearSummary(year),
+        getEntradaSummary(year),
       ])
       setProjects(projectsData)
       setSummary(summaryData)
+      setEntradaSummary(entradaData)
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -127,9 +131,14 @@ export default function DashboardPage() {
               onRefresh={fetchData}
               hideValues={hideValues}
             />
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <StatusChart projects={projects} />
               <ArchitectChart projects={projects} />
+              <EntradaChart
+                summary={entradaSummary}
+                currentMonth={month}
+                hideValues={hideValues}
+              />
             </div>
           </>
         )}

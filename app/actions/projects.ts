@@ -13,11 +13,6 @@ function isCurrentCalendarMonth(year: number, month: number) {
   return year === now.getFullYear() && month === now.getMonth() + 1
 }
 
-// Sempre que alguém abre o mês atual (o mês "de verdade", de hoje), qualquer
-// projeto (que não seja de avaliação) que ainda não foi ENTREGUE e que está
-// "preso" em um mês anterior é automaticamente puxado pra cá. Assim, se um
-// projeto não foi entregue em Julho, no dia 1 de Agosto ele já aparece
-// sozinho na tabela de Agosto, sem precisar recadastrar.
 async function rolloverPendingProjects(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -43,7 +38,7 @@ async function rolloverPendingProjects(
 
 export async function getProjects(year: number, month: number) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
@@ -91,7 +86,7 @@ export async function getProject(id: string) {
 
 export async function createProject(year: number, month: number, formData: ProjectFormData) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
@@ -111,6 +106,9 @@ export async function createProject(year: number, month: number, formData: Proje
       arquiteto: formData.arquiteto,
       valor: formData.valor,
       andamento: formData.andamento,
+      entrada_valor: formData.entrada_valor,
+      entrada_data: formData.entrada_data || null,
+      entrada_obs: formData.entrada_obs,
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -124,7 +122,6 @@ export async function createProject(year: number, month: number, formData: Proje
     throw new Error('Erro ao criar projeto')
   }
 
-  // Cria automaticamente a pasta "Projeto Oficial"
   if (data) {
     await supabase.from('folders').insert({
       user_id: user.id,
@@ -140,7 +137,7 @@ export async function createProject(year: number, month: number, formData: Proje
 
 export async function updateProject(id: string, formData: ProjectFormData) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
@@ -157,6 +154,9 @@ export async function updateProject(id: string, formData: ProjectFormData) {
       arquiteto: formData.arquiteto,
       valor: formData.valor,
       andamento: formData.andamento,
+      entrada_valor: formData.entrada_valor,
+      entrada_data: formData.entrada_data || null,
+      entrada_obs: formData.entrada_obs,
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -175,7 +175,7 @@ export async function updateProject(id: string, formData: ProjectFormData) {
 
 export async function deleteProject(id: string) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
@@ -195,7 +195,7 @@ export async function deleteProject(id: string) {
 
 export async function getYearSummary(year: number) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
@@ -219,7 +219,6 @@ export async function getYearSummary(year: number) {
 
   data?.forEach((project) => {
     const monthIndex = project.month - 1
-    // Só soma no total quando o projeto já foi ENTREGUE
     if (project.andamento === 'ENTREGUE') {
       summary[monthIndex].total += Number(project.valor) || 0
     }
@@ -231,7 +230,7 @@ export async function getYearSummary(year: number) {
 
 export async function getYearStats(year: number) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
@@ -268,7 +267,6 @@ export async function getYearStats(year: number) {
     }
   }
 
-  // Por marca
   const brandCount: Record<string, number> = {}
   data.forEach((p) => {
     const marca = p.marca || 'Não definida'
@@ -282,7 +280,6 @@ export async function getYearStats(year: number) {
     }))
     .sort((a, b) => b.value - a.value)
 
-  // Por arquiteto
   const architectCount: Record<string, number> = {}
   data.forEach((p) => {
     const arquiteto = p.arquiteto || 'Não definido'
@@ -296,7 +293,6 @@ export async function getYearStats(year: number) {
     }))
     .sort((a, b) => b.value - a.value)
 
-  // Média de dias úteis
   let totalDays = 0
   let countWithDays = 0
   data.forEach((p) => {
@@ -318,7 +314,6 @@ export async function getYearStats(year: number) {
   })
   const avgDays = countWithDays > 0 ? Math.round(totalDays / countWithDays) : 0
 
-  // Relatório mensal
   const monthly = Array.from({ length: 12 }, (_, i) => ({
     month: i + 1,
     projetos: 0,
@@ -428,8 +423,6 @@ export async function deleteYear(year: number) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
-  // Exclui todos os projetos do ano. As tabelas folders, files e images_3d
-  // possuem ON DELETE CASCADE, então serão removidas automaticamente.
   const { error } = await supabase
     .from('projects')
     .delete()
@@ -443,6 +436,57 @@ export async function deleteYear(year: number) {
   }
 
   revalidateTag('projects', 'max')
+}
+
+// ---------------------------------------------------------------------------
+// Entradas (pagamento inicial que cai na conta)
+// ---------------------------------------------------------------------------
+
+// Agrupa por mês em que a ENTRADA foi paga (usa entrada_data, não o
+// year/month do projeto) — assim "quantos projetos tiveram entrada em
+// agosto" bate certinho mesmo que o projeto esteja lançado em outro mês.
+export async function getEntradaSummary(year: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('marca, cidade, entrada_valor, entrada_data')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', false)
+    .not('entrada_data', 'is', null)
+
+  if (error) {
+    console.error('Error fetching entrada summary:', error)
+    return []
+  }
+
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    count: 0,
+    total: 0,
+    projetos: [] as { marca: string; cidade: string; valor: number; data: string }[],
+  }))
+
+  data?.forEach((p) => {
+    if (!p.entrada_data) return
+    const [entradaYear, entradaMonth] = p.entrada_data.split('-').map(Number)
+    if (entradaYear !== year) return
+    const idx = entradaMonth - 1
+    if (idx < 0 || idx > 11) return
+    months[idx].count += 1
+    months[idx].total += Number(p.entrada_valor) || 0
+    months[idx].projetos.push({
+      marca: p.marca || '-',
+      cidade: p.cidade || '-',
+      valor: Number(p.entrada_valor) || 0,
+      data: p.entrada_data,
+    })
+  })
+
+  return months
 }
 
 // ---------------------------------------------------------------------------
@@ -502,8 +546,6 @@ export async function createEvaluationProject(formData: EvaluationFormData) {
     .from('projects')
     .insert({
       user_id: user.id,
-      // year/month são só placeholder aqui: enquanto is_evaluation = true,
-      // o projeto nunca aparece nas telas de mês (getProjects filtra isso).
       year: now.getFullYear(),
       month: now.getMonth() + 1,
       marca: formData.marca,
@@ -555,8 +597,6 @@ export async function updateEvaluationProject(id: string, formData: EvaluationFo
   revalidateTag('projects', 'max')
 }
 
-// Confirma o fechamento: o registro deixa de ser "avaliação" e vira um
-// projeto de verdade, já caindo direto no mês escolhido.
 export async function confirmEvaluationProject(
   id: string,
   year: number,
@@ -590,7 +630,6 @@ export async function confirmEvaluationProject(
     throw new Error('Erro ao confirmar fechamento do projeto')
   }
 
-  // Só agora, que virou projeto de verdade, cria a pasta "Projeto Oficial"
   if (data) {
     await supabase.from('folders').insert({
       user_id: user.id,
