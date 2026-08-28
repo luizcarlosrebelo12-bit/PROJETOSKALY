@@ -34,6 +34,18 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     }).format(value)
   }
 
+  // Formato compacto pro eixo Y (R$ 1 mil, R$ 500, etc)
+  const formatCurrencyCompact = (value: number) => {
+    if (hideValues) return '••••'
+    if (value === 0) return 'R$ 0'
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value)
+  }
+
   const data = summary.map((m) => ({
     name: MONTHS_SHORT[m.month - 1],
     count: m.count,
@@ -54,7 +66,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
       </h3>
       <div className="h-[180px] w-full sm:h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }} barCategoryGap="30%">
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
             <XAxis
               dataKey="name"
@@ -63,17 +75,19 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
             />
             <YAxis
-              allowDecimals={false}
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+              tickFormatter={formatCurrencyCompact}
+              width={48}
             />
             <Tooltip
               cursor={{ fill: 'hsl(var(--muted-foreground))', opacity: 0.1 }}
               wrapperStyle={{ zIndex: 50, outline: 'none' }}
-              formatter={(value: number, name: string) =>
-                name === 'count' ? [`${value} projeto(s)`, 'Entradas'] : [formatCurrency(value), 'Total']
-              }
+              formatter={(value: number, name: string, item: any) => {
+                const count = item?.payload?.count ?? 0
+                return [`${formatCurrency(value)} · ${count} projeto(s)`, 'Entradas']
+              }}
               labelFormatter={(label) => `Mês: ${label}`}
               contentStyle={{
                 fontSize: 12,
@@ -86,7 +100,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               labelStyle={{ color: 'hsl(var(--popover-foreground))', marginBottom: 4 }}
               itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={28}>
+            <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={28}>
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
