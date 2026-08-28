@@ -1,6 +1,6 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
 import { MONTHS_SHORT } from '@/lib/types'
 
 interface EntradaChartProps {
@@ -51,28 +51,33 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
       </h3>
       <div className="h-[220px] w-full sm:h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 24, right: 8, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
             <XAxis
               dataKey="name"
-              fontSize={11}
               tickLine={false}
               axisLine={false}
-              className="fill-muted-foreground"
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
             />
             <YAxis
               allowDecimals={false}
-              fontSize={11}
               tickLine={false}
               axisLine={false}
-              className="fill-muted-foreground"
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
             />
             <Tooltip
               formatter={(value: number, name: string) =>
                 name === 'count' ? [`${value} projeto(s)`, 'Entradas'] : [formatCurrency(value), 'Total']
               }
               labelFormatter={(label) => `Mês: ${label}`}
-              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 8,
+                backgroundColor: 'hsl(var(--popover))',
+                color: 'hsl(var(--popover-foreground))',
+                border: '1px solid hsl(var(--border))',
+              }}
+              labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (
@@ -81,6 +86,12 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
                   fill={entry.isCurrent ? '#3b82f6' : '#93c5fd'}
                 />
               ))}
+              <LabelList
+                dataKey="total"
+                position="top"
+                formatter={(value: number) => (value > 0 ? formatCurrency(value) : '')}
+                style={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

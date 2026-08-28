@@ -88,18 +88,11 @@ export function ProjectDialog({
     e.preventDefault()
     setIsLoading(true)
 
-    // O valor da entrada não é mais digitado separadamente:
-    // se tiver data de entrada preenchida, usamos o próprio "Valor" do projeto.
-    const payload: ProjectFormData = {
-      ...formData,
-      entrada_valor: formData.entrada_data ? formData.valor : null,
-    }
-
     try {
       if (project) {
-        await updateProject(project.id, payload)
+        await updateProject(project.id, formData)
       } else {
-        await createProject(year, month, payload)
+        await createProject(year, month, formData)
       }
       onSuccess()
     } catch (error) {
@@ -215,24 +208,43 @@ export function ProjectDialog({
           </div>
 
           {/* Entrada — independe do status, pode ser lançada a qualquer momento.
-              O valor é o próprio campo "Valor" acima; aqui só data + observação. */}
+              Valor próprio, diferente do Valor do projeto acima. */}
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-foreground">Entrada</h3>
               <span className="text-xs text-muted-foreground">
-                Data em que o valor caiu na conta como entrada do projeto
+                Valor que caiu na conta como entrada do projeto
               </span>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="entrada_data">Data da Entrada</Label>
-              <Input
-                id="entrada_data"
-                type="date"
-                value={formData.entrada_data ?? ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, entrada_data: e.target.value || null })
-                }
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="entrada_valor">Valor da Entrada (R$)</Label>
+                <Input
+                  id="entrada_valor"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.entrada_valor ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      entrada_valor: e.target.value === '' ? null : parseFloat(e.target.value),
+                    })
+                  }
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="entrada_data">Data da Entrada</Label>
+                <Input
+                  id="entrada_data"
+                  type="date"
+                  value={formData.entrada_data ?? ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, entrada_data: e.target.value || null })
+                  }
+                />
+              </div>
             </div>
             <div className="mt-4 space-y-2">
               <Label htmlFor="entrada_obs">Observações</Label>
