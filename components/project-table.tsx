@@ -170,7 +170,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                     <TableCell className="px-2 py-2 truncate" title={project.marca || '-'}>
                       {project.marca || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate" title={project.cidade || '-'}>
+                    <TableCell className="px-2 py-2 truncate text-[9px]" title={project.cidade || '-'}>
                       {project.cidade || '-'}
                     </TableCell>
                     <TableCell
