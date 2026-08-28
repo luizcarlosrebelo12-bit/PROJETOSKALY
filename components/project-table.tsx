@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, Plus, FolderOpen } from 'lucide-react'
+import { Pencil, Trash2, Plus, FolderOpen, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -57,6 +57,15 @@ function calculateBusinessDays(startDate: string | null, endDate: string | null)
   }
 
   return count
+}
+
+// Pequeno selo verde (estilo "expoente", tipo m³) indicando que a Entrada já foi lançada
+function EntradaBadge() {
+  return (
+    <span className="absolute -top-1.5 -right-2.5 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 ring-1 ring-white">
+      <Check className="h-2 w-2 text-white" strokeWidth={3} />
+    </span>
+  )
 }
 
 export function ProjectTable({ projects, year, month, onRefresh, hideValues = false }: ProjectTableProps) {
@@ -125,7 +134,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
 
       {/* ===== TABELA — visível apenas no desktop ===== */}
       <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
-        <Table className="w-full table-fixed text-xs">
+        <Table className="w-full table-fixed text-[9px]">
           <colgroup>
             <col className="w-[3%]" />   {/* N */}
             <col className="w-[10%]" />  {/* Marca */}
@@ -170,7 +179,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                     <TableCell className="px-2 py-2 truncate" title={project.marca || '-'}>
                       {project.marca || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate text-[9px]" title={project.cidade || '-'}>
+                    <TableCell className="px-2 py-2 truncate" title={project.cidade || '-'}>
                       {project.cidade || '-'}
                     </TableCell>
                     <TableCell
@@ -191,7 +200,10 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                       {project.arquiteto || '-'}
                     </TableCell>
                     <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
-                      {formatCurrency(Number(project.valor))}
+                      <span className="relative inline-block">
+                        {formatCurrency(Number(project.valor))}
+                        {project.entrada_data && <EntradaBadge />}
+                      </span>
                     </TableCell>
                     <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
                       {project.andamento === 'ENTREGUE' && project.pagamento_final_valor
@@ -300,7 +312,10 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Valor</p>
-                      <p className="font-medium">{formatCurrency(Number(project.valor))}</p>
+                      <p className="font-medium relative inline-block">
+                        {formatCurrency(Number(project.valor))}
+                        {project.entrada_data && <EntradaBadge />}
+                      </p>
                     </div>
                     {project.andamento === 'ENTREGUE' && project.pagamento_final_valor && (
                       <div className="col-span-2">

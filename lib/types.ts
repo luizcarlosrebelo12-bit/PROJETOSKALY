@@ -3,6 +3,8 @@ export type ProjectStatus =
   | 'LEVANTAMENTO' 
   | 'LAYOUT' 
   | 'DESENVOLVIMENTO' 
+  | 'ORÇAMENTOS'
+  | 'PAGAMENTOS'
   | 'ENTREGUE' 
   | 'PENDENTE'
 
@@ -140,6 +142,8 @@ export const STATUS_OPTIONS: ProjectStatus[] = [
   'LEVANTAMENTO', 
   'LAYOUT',
   'DESENVOLVIMENTO',
+  'ORÇAMENTOS',
+  'PAGAMENTOS',
   'ENTREGUE',
   'PENDENTE'
 ]
@@ -149,6 +153,8 @@ export const STATUS_COLORS: Record<ProjectStatus, string> = {
   'LEVANTAMENTO': 'bg-yellow-100 text-yellow-800',
   'LAYOUT': 'bg-orange-100 text-orange-800',
   'DESENVOLVIMENTO': 'bg-purple-100 text-purple-800',
+  'ORÇAMENTOS': 'bg-cyan-100 text-cyan-800',
+  'PAGAMENTOS': 'bg-indigo-100 text-indigo-800',
   'ENTREGUE': 'bg-green-100 text-green-800',
   'PENDENTE': 'bg-red-100 text-red-800',
 }
