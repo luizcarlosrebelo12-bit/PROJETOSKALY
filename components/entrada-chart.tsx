@@ -66,6 +66,8 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
             />
             <Tooltip
+              cursor={{ fill: 'hsl(var(--muted-foreground))', opacity: 0.1 }}
+              wrapperStyle={{ zIndex: 50, outline: 'none' }}
               formatter={(value: number, name: string) =>
                 name === 'count' ? [`${value} projeto(s)`, 'Entradas'] : [formatCurrency(value), 'Total']
               }
@@ -76,10 +78,12 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
                 backgroundColor: 'hsl(var(--popover))',
                 color: 'hsl(var(--popover-foreground))',
                 border: '1px solid hsl(var(--border))',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
               }}
-              labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+              labelStyle={{ color: 'hsl(var(--popover-foreground))', marginBottom: 4 }}
+              itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
@@ -89,7 +93,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               <LabelList
                 dataKey="total"
                 position="top"
-                formatter={(value: number) => (value > 0 ? formatCurrency(value) : '')}
+                formatter={(value: number) => (value > 0 && !hideValues ? formatCurrency(value) : '')}
                 style={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
               />
             </Bar>
