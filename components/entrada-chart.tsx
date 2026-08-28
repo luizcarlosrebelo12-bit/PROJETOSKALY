@@ -34,8 +34,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     }).format(value)
   }
 
-  // Versão curta usada só no rótulo em cima da barra, pra não colidir
-  // quando dois meses seguidos têm entrada (ex: "R$50" e "R$1,3 mil")
+  // Versão curta usada só no rótulo em cima da barra
   const formatCurrencyCompact = (value: number) => {
     if (hideValues) return '••••'
     return new Intl.NumberFormat('pt-BR', {
@@ -56,6 +55,29 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
   const totalCount = summary.reduce((sum, m) => sum + m.count, 0)
   const totalValue = summary.reduce((sum, m) => sum + m.total, 0)
 
+  // Rótulo customizado: escalona a altura (índice par x ímpar) pra nunca
+  // colidir mesmo quando dois meses vizinhos têm entrada (ex: Jul e Ago)
+  const renderValueLabel = (props: any) => {
+    const { x, y, width, value, index } = props
+    if (!value || hideValues) return null
+
+    const isOdd = index % 2 !== 0
+    const yPos = isOdd ? y - 16 : y - 4
+
+    return (
+      <text
+        x={x + width / 2}
+        y={yPos}
+        textAnchor="middle"
+        fontSize={9}
+        fontWeight={600}
+        fill="hsl(var(--foreground))"
+      >
+        {formatCurrencyCompact(value)}
+      </text>
+    )
+  }
+
   return (
     <div className="rounded-lg border bg-card p-4 sm:p-6">
       <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
@@ -65,7 +87,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ top: 24, right: 8, left: -20, bottom: 0 }}
+            margin={{ top: 32, right: 8, left: -20, bottom: 0 }}
             barCategoryGap="30%"
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
@@ -106,13 +128,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
                   fill={entry.isCurrent ? '#3b82f6' : '#93c5fd'}
                 />
               ))}
-              <LabelList
-                dataKey="total"
-                position="top"
-                offset={6}
-                formatter={(value: number) => (value > 0 && !hideValues ? formatCurrencyCompact(value) : '')}
-                style={{ fill: 'hsl(var(--foreground))', fontSize: 9, fontWeight: 600 }}
-              />
+              <LabelList dataKey="total" content={renderValueLabel} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
