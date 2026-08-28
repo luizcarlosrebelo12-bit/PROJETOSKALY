@@ -134,7 +134,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
 
       {/* ===== TABELA — visível apenas no desktop ===== */}
       <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
-        <Table className="w-full table-fixed text-[9px]">
+        <Table className="w-full table-fixed text-[10px]">
           <colgroup>
             <col className="w-[3%]" />   {/* N */}
             <col className="w-[10%]" />  {/* Marca */}
@@ -179,7 +179,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                     <TableCell className="px-2 py-2 truncate" title={project.marca || '-'}>
                       {project.marca || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate" title={project.cidade || '-'}>
+                    <TableCell className="px-2 py-2 truncate text-[9px]" title={project.cidade || '-'}>
                       {project.cidade || '-'}
                     </TableCell>
                     <TableCell
