@@ -1,6 +1,6 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { MONTHS_SHORT } from '@/lib/types'
 
 interface EntradaChartProps {
@@ -34,17 +34,6 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     }).format(value)
   }
 
-  // Versão curta usada só no rótulo em cima da barra
-  const formatCurrencyCompact = (value: number) => {
-    if (hideValues) return '••••'
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(value)
-  }
-
   const data = summary.map((m) => ({
     name: MONTHS_SHORT[m.month - 1],
     count: m.count,
@@ -52,44 +41,20 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     isCurrent: m.month === currentMonth,
   }))
 
+  // Só os meses com entrada, pra lista abaixo do gráfico
+  const monthsWithEntrada = data.filter((m) => m.count > 0)
+
   const totalCount = summary.reduce((sum, m) => sum + m.count, 0)
   const totalValue = summary.reduce((sum, m) => sum + m.total, 0)
-
-  // Rótulo customizado: escalona a altura (índice par x ímpar) pra nunca
-  // colidir mesmo quando dois meses vizinhos têm entrada (ex: Jul e Ago)
-  const renderValueLabel = (props: any) => {
-    const { x, y, width, value, index } = props
-    if (!value || hideValues) return null
-
-    const isOdd = index % 2 !== 0
-    const yPos = isOdd ? y - 16 : y - 4
-
-    return (
-      <text
-        x={x + width / 2}
-        y={yPos}
-        textAnchor="middle"
-        fontSize={9}
-        fontWeight={600}
-        fill="hsl(var(--foreground))"
-      >
-        {formatCurrencyCompact(value)}
-      </text>
-    )
-  }
 
   return (
     <div className="rounded-lg border bg-card p-4 sm:p-6">
       <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
         Entradas por Mês
       </h3>
-      <div className="h-[220px] w-full sm:h-[260px]">
+      <div className="h-[180px] w-full sm:h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 32, right: 8, left: -20, bottom: 0 }}
-            barCategoryGap="30%"
-          >
+          <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
             <XAxis
               dataKey="name"
@@ -128,11 +93,22 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
                   fill={entry.isCurrent ? '#3b82f6' : '#93c5fd'}
                 />
               ))}
-              <LabelList dataKey="total" content={renderValueLabel} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Lista dos valores por mês — evita sobreposição de texto em cima das barras */}
+      {!hideValues && (
+        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t pt-2 text-[11px] text-muted-foreground">
+          {monthsWithEntrada.map((m) => (
+            <span key={m.name}>
+              <strong className="text-foreground">{m.name}:</strong> {formatCurrency(m.total)}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs sm:gap-4 sm:text-sm">
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 shrink-0 rounded-full bg-blue-500" />
