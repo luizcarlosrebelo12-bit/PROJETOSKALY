@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import type { Project, ProjectFormData, ProjectStatus } from '@/lib/types'
 import { STATUS_OPTIONS } from '@/lib/types'
-import { createProject, updateProject } from '@/app/actions/projects'
+import { createProject, updateProject, getEntradaValoresPorMarca } from '@/app/actions/projects'
 
 interface ProjectDialogProps {
   open: boolean
@@ -48,6 +49,31 @@ const emptyForm: ProjectFormData = {
   pagamento_final_obs: null,
 }
 
+const formatBRL = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+// Considera "muito diferente" se o valor estiver abaixo de 40% da média
+// ou acima de 2,5x a média das entradas anteriores da mesma marca.
+// Ajuste esses dois números se quiser um filtro mais ou menos sensível.
+const LIMITE_INFERIOR = 0.4
+const LIMITE_SUPERIOR = 2.5
+
+function getEntradaDeviationWarning(valor: number, historico: number[]): string | null {
+  if (historico.length === 0) return null
+
+  const media = historico.reduce((sum, v) => sum + v, 0) / historico.length
+  if (media <= 0) return null
+
+  const min = Math.min(...historico)
+  const max = Math.max(...historico)
+
+  if (valor < media * LIMITE_INFERIOR || valor > media * LIMITE_SUPERIOR) {
+    return `O valor de ${formatBRL(valor)} está bem diferente das entradas anteriores dessa marca (média de ${formatBRL(media)}, variando de ${formatBRL(min)} a ${formatBRL(max)}). Tem certeza que é esse o valor?`
+  }
+
+  return null
+}
+
 export function ProjectDialog({
   open,
   onOpenChange,
@@ -58,6 +84,11 @@ export function ProjectDialog({
 }: ProjectDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<ProjectFormData>(emptyForm)
+
+  // Histórico de valores de entrada da mesma marca, pra comparação
+  const [entradaHistorico, setEntradaHistorico] = useState<number[]>([])
+  const [entradaWarning, setEntradaWarning] = useState<string | null>(null)
+  const [entradaConfirmada, setEntradaConfirmada] = useState(false)
 
   useEffect(() => {
     if (project) {
@@ -80,14 +111,45 @@ export function ProjectDialog({
     } else {
       setFormData(emptyForm)
     }
+    setEntradaWarning(null)
+    setEntradaConfirmada(false)
   }, [project, open])
+
+  // Busca o histórico de entradas da marca digitada (com debounce simples)
+  useEffect(() => {
+    if (!open || !formData.marca.trim()) {
+      setEntradaHistorico([])
+      return
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const valores = await getEntradaValoresPorMarca(formData.marca.trim(), project?.id)
+        setEntradaHistorico(valores)
+      } catch (error) {
+        console.error('Erro ao buscar histórico de entrada da marca:', error)
+      }
+    }, 400)
+
+    return () => clearTimeout(timeout)
+  }, [formData.marca, open, project?.id])
+
+  // Sempre que o valor da entrada ou o histórico mudam, revalida o aviso
+  // e cancela uma eventual confirmação já dada pra um valor anterior.
+  useEffect(() => {
+    setEntradaConfirmada(false)
+    if (formData.entrada_valor != null && formData.entrada_valor > 0) {
+      setEntradaWarning(getEntradaDeviationWarning(formData.entrada_valor, entradaHistorico))
+    } else {
+      setEntradaWarning(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.entrada_valor, entradaHistorico])
 
   const isEntregue = formData.andamento === 'ENTREGUE'
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const saveProject = async () => {
     setIsLoading(true)
-
     try {
       if (project) {
         await updateProject(project.id, formData)
@@ -100,6 +162,23 @@ export function ProjectDialog({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Se tem aviso de valor destoante e ainda não foi confirmado, para aqui
+    // e deixa o aviso visível pro usuário confirmar ou corrigir.
+    if (entradaWarning && !entradaConfirmada) {
+      return
+    }
+
+    await saveProject()
+  }
+
+  const handleConfirmarEntrada = async () => {
+    setEntradaConfirmada(true)
+    await saveProject()
   }
 
   return (
@@ -258,6 +337,38 @@ export function ProjectDialog({
                 rows={2}
               />
             </div>
+
+            {/* Aviso de valor destoante da média da marca — só aparece quando necessário */}
+            {entradaWarning && (
+              <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+                <div className="flex gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="flex-1 space-y-2">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 sm:text-sm">
+                      {entradaWarning}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEntradaWarning(null)}
+                      >
+                        Vou corrigir
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleConfirmarEntrada}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Salvando...' : 'Confirmar mesmo assim'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pagamento Final */}
@@ -321,7 +432,7 @@ export function ProjectDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || (!!entradaWarning && !entradaConfirmada)}>
               {isLoading ? 'Salvando...' : project ? 'Salvar' : 'Criar'}
             </Button>
           </div>

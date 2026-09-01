@@ -489,6 +489,44 @@ export async function getEntradaSummary(year: number) {
   return months
 }
 
+// Busca todos os valores de entrada já lançados pra uma marca (usado no
+// project-dialog pra avisar quando um valor novo destoa muito da média
+// histórica dessa marca). Ignora entradas nulas/zeradas e, opcionalmente,
+// exclui o próprio projeto sendo editado (pra não comparar o valor com
+// ele mesmo).
+export async function getEntradaValoresPorMarca(
+  marca: string,
+  excludeProjectId?: string
+): Promise<number[]> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  let query = supabase
+    .from('projects')
+    .select('id, entrada_valor')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', false)
+    .ilike('marca', marca)
+    .not('entrada_valor', 'is', null)
+
+  if (excludeProjectId) {
+    query = query.neq('id', excludeProjectId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching entrada valores por marca:', error)
+    return []
+  }
+
+  return (data || [])
+    .map((row) => Number(row.entrada_valor))
+    .filter((v) => !isNaN(v) && v > 0)
+}
+
 // Agrupa por mês em que o PAGAMENTO FINAL foi recebido (usa
 // pagamento_final_data, não o year/month do projeto) — mesmo padrão
 // da getEntradaSummary, mas só considera projetos ENTREGUES.
