@@ -23,6 +23,7 @@ import {
 import { useHideValues } from '@/components/hide-values-provider'
 import { EntradaChart } from '@/components/entrada-chart'
 import { PagamentoFinalChart } from '@/components/pagamento-final-chart'
+import { DetalhamentoTable } from '@/components/detalhamento-table'
 
 interface ProjetoDetalhe {
   marca: string
@@ -85,11 +86,6 @@ export default function FinanceiroPage() {
       style: 'currency',
       currency: 'BRL',
     }).format(value)
-  }
-
-  const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-')
-    return `${d}/${m}/${y}`
   }
 
   // Lista achatada, ordenada da entrada mais recente pra mais antiga
@@ -235,78 +231,20 @@ export default function FinanceiroPage() {
             </div>
 
             {/* Detalhamento de entradas */}
-            <Card className="p-4 sm:p-6">
-              <h3 className="mb-4 text-sm font-semibold text-foreground sm:text-base">
-                Detalhamento de Entradas
-              </h3>
-              {entradaList.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhuma entrada registrada em {year}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-4 font-medium">Projeto</th>
-                        <th className="py-2 pr-4 font-medium">Cidade</th>
-                        <th className="py-2 pr-4 font-medium">Data</th>
-                        <th className="py-2 text-right font-medium">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {entradaList.map((p, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-4 text-foreground">{p.marca}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{p.cidade}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{formatDate(p.data)}</td>
-                          <td className="py-2 text-right font-medium text-foreground">
-                            {formatCurrency(p.valor)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
+            <DetalhamentoTable
+              title="Detalhamento de Entradas"
+              data={entradaList}
+              emptyMessage={`Nenhuma entrada registrada em ${year}`}
+              formatCurrency={formatCurrency}
+            />
 
             {/* Detalhamento de pagamentos finais */}
-            <Card className="p-4 sm:p-6">
-              <h3 className="mb-4 text-sm font-semibold text-foreground sm:text-base">
-                Detalhamento de Pagamentos Finais
-              </h3>
-              {pagamentoList.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum pagamento final recebido em {year}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-4 font-medium">Projeto</th>
-                        <th className="py-2 pr-4 font-medium">Cidade</th>
-                        <th className="py-2 pr-4 font-medium">Data</th>
-                        <th className="py-2 text-right font-medium">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagamentoList.map((p, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-4 text-foreground">{p.marca}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{p.cidade}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{formatDate(p.data)}</td>
-                          <td className="py-2 text-right font-medium text-foreground">
-                            {formatCurrency(p.valor)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
+            <DetalhamentoTable
+              title="Detalhamento de Pagamentos Finais"
+              data={pagamentoList}
+              emptyMessage={`Nenhum pagamento final recebido em ${year}`}
+              formatCurrency={formatCurrency}
+            />
           </>
         )}
       </main>
