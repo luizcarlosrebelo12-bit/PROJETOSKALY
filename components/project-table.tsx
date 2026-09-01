@@ -136,17 +136,28 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
       <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
         <Table className="w-full table-fixed text-[10px]">
           <colgroup>
-            <col className="w-[3%]" />   {/* N */}
-            <col className="w-[10%]" />  {/* Marca */}
-            <col className="w-[11%]" />  {/* Cidade */}
-            <col className="w-[15%]" />  {/* Período (Início → Final) */}
-            <col className="w-[5%]" />   {/* Dias Úteis */}
-            <col className="w-[9%]" />   {/* Modalidade */}
-            <col className="w-[9%]" />   {/* Arquiteto */}
-            <col className="w-[10%]" />  {/* Valor */}
-            <col className="w-[10%]" />  {/* Pag. Final */}
-            <col className="w-[10%]" />  {/* Andamento */}
-            <col className="w-[8%]" />   {/* Ações */}
+            {/* N */}
+            <col className="w-[3%]" />
+            {/* Marca */}
+            <col className="w-[10%]" />
+            {/* Cidade */}
+            <col className="w-[11%]" />
+            {/* Período (Início → Final) */}
+            <col className="w-[15%]" />
+            {/* Dias Úteis */}
+            <col className="w-[5%]" />
+            {/* Modalidade */}
+            <col className="w-[9%]" />
+            {/* Arquiteto */}
+            <col className="w-[9%]" />
+            {/* Valor */}
+            <col className="w-[10%]" />
+            {/* Pag. Final */}
+            <col className="w-[10%]" />
+            {/* Andamento */}
+            <col className="w-[10%]" />
+            {/* Ações */}
+            <col className="w-[8%]" />
           </colgroup>
           <TableHeader>
             <TableRow className="bg-muted/50">

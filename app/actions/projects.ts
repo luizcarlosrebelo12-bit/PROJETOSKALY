@@ -489,6 +489,54 @@ export async function getEntradaSummary(year: number) {
   return months
 }
 
+// Agrupa por mês em que o PAGAMENTO FINAL foi recebido (usa
+// pagamento_final_data, não o year/month do projeto) — mesmo padrão
+// da getEntradaSummary, mas só considera projetos ENTREGUES.
+export async function getPagamentoFinalSummary(year: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('marca, cidade, pagamento_final_valor, pagamento_final_data')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', false)
+    .eq('andamento', 'ENTREGUE')
+    .not('pagamento_final_data', 'is', null)
+
+  if (error) {
+    console.error('Error fetching pagamento final summary:', error)
+    return []
+  }
+
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    count: 0,
+    total: 0,
+    projetos: [] as { marca: string; cidade: string; valor: number; data: string }[],
+  }))
+
+  data?.forEach((p) => {
+    if (!p.pagamento_final_data) return
+    const [pfYear, pfMonth] = p.pagamento_final_data.split('-').map(Number)
+    if (pfYear !== year) return
+    const idx = pfMonth - 1
+    if (idx < 0 || idx > 11) return
+    months[idx].count += 1
+    months[idx].total += Number(p.pagamento_final_valor) || 0
+    months[idx].projetos.push({
+      marca: p.marca || '-',
+      cidade: p.cidade || '-',
+      valor: Number(p.pagamento_final_valor) || 0,
+      data: p.pagamento_final_data,
+    })
+  })
+
+  return months
+}
+
 // ---------------------------------------------------------------------------
 // Projetos em Avaliação (prospecção / aba "Avaliando sala")
 // ---------------------------------------------------------------------------

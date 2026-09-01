@@ -10,6 +10,7 @@ import {
   BarChart3,
   ClipboardList,
   HardDrive,
+  Wallet,
   LogOut,
   Moon,
   Sun,
@@ -36,6 +37,11 @@ const NAV_ITEMS = [
     href: '/dashboard/estatisticas',
     label: 'Estatísticas',
     icon: BarChart3,
+  },
+  {
+    href: '/dashboard/financeiro',
+    label: 'Financeiro',
+    icon: Wallet,
   },
   {
     href: '/dashboard/avaliacao',
