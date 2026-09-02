@@ -223,6 +223,28 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                     <X className="h-3 w-3" /> Limpar filtros
                   </button>
                 )}
+                {/* Filtros de coluna (Projeto/Cidade) no mobile, já que a tabela
+                    vira cards e esses botões não aparecem mais nos <th>. */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground sm:hidden">
+                  <span className="inline-flex items-center">
+                    Projeto
+                    <ColumnFilter
+                      label="Projeto"
+                      options={projetoOptions}
+                      selected={projetoFilter}
+                      onChange={setProjetoFilter}
+                    />
+                  </span>
+                  <span className="inline-flex items-center">
+                    Cidade
+                    <ColumnFilter
+                      label="Cidade"
+                      options={cidadeOptions}
+                      selected={cidadeFilter}
+                      onChange={setCidadeFilter}
+                    />
+                  </span>
+                </div>
               </div>
 
               {filtered.length === 0 ? (
@@ -230,58 +252,94 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                   Nenhum resultado para os filtros aplicados
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="py-2 pr-4 font-medium">
-                          <span className="inline-flex items-center">
-                            Projeto
-                            <ColumnFilter
-                              label="Projeto"
-                              options={projetoOptions}
-                              selected={projetoFilter}
-                              onChange={setProjetoFilter}
-                            />
-                          </span>
-                        </th>
-                        <th className="py-2 pr-4 font-medium">
-                          <span className="inline-flex items-center">
-                            Cidade
-                            <ColumnFilter
-                              label="Cidade"
-                              options={cidadeOptions}
-                              selected={cidadeFilter}
-                              onChange={setCidadeFilter}
-                            />
-                          </span>
-                        </th>
-                        <th className="py-2 pr-4 font-medium">Data</th>
-                        <th className="py-2 text-right font-medium">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((p, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-4 text-foreground">{p.marca}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{p.cidade}</td>
-                          <td className="py-2 pr-4 text-muted-foreground">{formatDate(p.data)}</td>
-                          <td className="py-2 text-right font-medium text-foreground">
+                <>
+                  {/* ===================================================== */}
+                  {/* MOBILE: lista em cards, sem scroll horizontal          */}
+                  {/* ===================================================== */}
+                  <div className="space-y-2 sm:hidden">
+                    {filtered.map((p, i) => (
+                      <div
+                        key={i}
+                        className="rounded-md border bg-background p-3 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-foreground">{p.marca}</span>
+                          <span className="whitespace-nowrap font-semibold text-foreground">
                             {formatCurrency(p.valor)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="mt-3 flex justify-end gap-4 border-t pt-2 text-xs text-muted-foreground sm:text-sm">
-                    <span>
-                      {filtered.length} de {data.length} registro(s)
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      Total: {formatCurrency(total)}
-                    </span>
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="truncate">{p.cidade}</span>
+                          <span className="whitespace-nowrap">{formatDate(p.data)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="mt-3 flex justify-between border-t pt-2 text-xs text-muted-foreground">
+                      <span>
+                        {filtered.length} de {data.length} registro(s)
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        Total: {formatCurrency(total)}
+                      </span>
+                    </div>
                   </div>
-                </div>
+
+                  {/* ===================================================== */}
+                  {/* DESKTOP: tabela original, intocada                    */}
+                  {/* ===================================================== */}
+                  <div className="hidden overflow-x-auto sm:block">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs text-muted-foreground">
+                          <th className="py-2 pr-4 font-medium">
+                            <span className="inline-flex items-center">
+                              Projeto
+                              <ColumnFilter
+                                label="Projeto"
+                                options={projetoOptions}
+                                selected={projetoFilter}
+                                onChange={setProjetoFilter}
+                              />
+                            </span>
+                          </th>
+                          <th className="py-2 pr-4 font-medium">
+                            <span className="inline-flex items-center">
+                              Cidade
+                              <ColumnFilter
+                                label="Cidade"
+                                options={cidadeOptions}
+                                selected={cidadeFilter}
+                                onChange={setCidadeFilter}
+                              />
+                            </span>
+                          </th>
+                          <th className="py-2 pr-4 font-medium">Data</th>
+                          <th className="py-2 text-right font-medium">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((p, i) => (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="py-2 pr-4 text-foreground">{p.marca}</td>
+                            <td className="py-2 pr-4 text-muted-foreground">{p.cidade}</td>
+                            <td className="py-2 pr-4 text-muted-foreground">{formatDate(p.data)}</td>
+                            <td className="py-2 text-right font-medium text-foreground">
+                              {formatCurrency(p.valor)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="mt-3 flex justify-end gap-4 border-t pt-2 text-xs text-muted-foreground sm:text-sm">
+                      <span>
+                        {filtered.length} de {data.length} registro(s)
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        Total: {formatCurrency(total)}
+                      </span>
+                    </div>
+                  </div>
+                </>
               )}
             </>
           )}

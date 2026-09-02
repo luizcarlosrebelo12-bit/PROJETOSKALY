@@ -219,35 +219,35 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
       {/* SIDEBAR DESKTOP */}
       {/* ========================================================= */}
 
-<aside
-  className={`hidden shrink-0 overflow-visible transition-all duration-200 md:block ${
-    collapsed ? 'w-16' : 'w-64'
-  }`}
->
-  <div className="relative h-screen overflow-visible sticky top-0">
-    {content(collapsed)}
+      <aside
+        className={`hidden shrink-0 overflow-visible transition-all duration-200 md:block ${
+          collapsed ? 'w-16' : 'w-64'
+        }`}
+      >
+        <div className="relative h-screen overflow-visible sticky top-0">
+          {content(collapsed)}
 
-    {/* Botão recolher/expandir */}
-    <Button
-      variant="secondary"
-      size="icon"
-      className="absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border shadow-md"
-      onClick={() => setCollapsed((current) => !current)}
-    >
-      {collapsed ? (
-        <ChevronRight className="h-3.5 w-3.5" />
-      ) : (
-        <ChevronLeft className="h-3.5 w-3.5" />
-      )}
-    </Button>
-  </div>
-</aside>
+          {/* Botão recolher/expandir */}
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border shadow-md"
+            onClick={() => setCollapsed((current) => !current)}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+      </aside>
 
       {/* ========================================================= */}
       {/* BARRA INFERIOR MOBILE */}
       {/* ========================================================= */}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex min-h-[64px] items-center justify-around border-t bg-sidebar pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 text-sidebar-foreground md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground md:hidden">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           const Icon = item.icon
@@ -261,19 +261,19 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
             >
               <span className="relative">
                 <Icon
-                  className={`h-6 w-6 transition-transform ${
+                  className={`h-[18px] w-[18px] transition-transform ${
                     active
-                      ? 'scale-110 text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground/60'
+                      ? 'scale-105 text-sidebar-accent-foreground'
+                      : 'text-sidebar-foreground/55'
                   }`}
-                  strokeWidth={active ? 2.5 : 2}
+                  strokeWidth={active ? 2.25 : 1.75}
                 />
 
                 {item.href === '/dashboard/avaliacao' &&
                   evaluationCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="absolute -right-1.5 -top-1 h-4 min-w-4 justify-center px-1 text-[9px]"
+                      className="absolute -right-1.5 -top-1.5 h-3.5 min-w-3.5 justify-center rounded-full px-1 text-[8px] leading-none"
                     >
                       {evaluationCount}
                     </Badge>
@@ -281,10 +281,10 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
               </span>
 
               <span
-                className={`text-[10px] ${
+                className={`text-[9px] leading-none tracking-tight ${
                   active
                     ? 'font-medium text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground/60'
+                    : 'font-normal text-sidebar-foreground/55'
                 }`}
               >
                 {item.label}
@@ -299,9 +299,12 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
           onClick={() => setMoreOpen(true)}
           className="flex h-full flex-1 flex-col items-center justify-center gap-0.5"
         >
-          <MoreHorizontal className="h-6 w-6 text-sidebar-foreground/60" />
+          <MoreHorizontal
+            className="h-[18px] w-[18px] text-sidebar-foreground/55"
+            strokeWidth={1.75}
+          />
 
-          <span className="text-[10px] text-sidebar-foreground/60">
+          <span className="text-[9px] font-normal leading-none tracking-tight text-sidebar-foreground/55">
             Mais
           </span>
         </button>
