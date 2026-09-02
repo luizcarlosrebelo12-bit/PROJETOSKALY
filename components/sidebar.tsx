@@ -247,7 +247,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
       {/* BARRA INFERIOR MOBILE */}
       {/* ========================================================= */}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t bg-sidebar pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sidebar-foreground md:hidden">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           const Icon = item.icon
@@ -261,7 +261,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
             >
               <span className="relative">
                 <Icon
-                  className={`h-[18px] w-[18px] transition-transform ${
+                  className={`h-5 w-5 transition-transform ${
                     active
                       ? 'scale-105 text-sidebar-accent-foreground'
                       : 'text-sidebar-foreground/55'
@@ -281,7 +281,7 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
               </span>
 
               <span
-                className={`text-[9px] leading-none tracking-tight ${
+                className={`text-[10px] leading-none tracking-tight ${
                   active
                     ? 'font-medium text-sidebar-accent-foreground'
                     : 'font-normal text-sidebar-foreground/55'
@@ -300,11 +300,11 @@ export function Sidebar({ evaluationCount = 0 }: SidebarProps) {
           className="flex h-full flex-1 flex-col items-center justify-center gap-0.5"
         >
           <MoreHorizontal
-            className="h-[18px] w-[18px] text-sidebar-foreground/55"
+            className="h-5 w-5 text-sidebar-foreground/55"
             strokeWidth={1.75}
           />
 
-          <span className="text-[9px] font-normal leading-none tracking-tight text-sidebar-foreground/55">
+          <span className="text-[10px] font-normal leading-none tracking-tight text-sidebar-foreground/55">
             Mais
           </span>
         </button>
