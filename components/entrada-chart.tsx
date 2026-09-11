@@ -72,17 +72,17 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               dataKey="name"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
+              tick={{ fill: 'var(--foreground)', fontSize: 11 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
+              tick={{ fill: 'var(--foreground)', fontSize: 10 }}
               tickFormatter={formatCurrencyCompact}
               width={48}
             />
             <Tooltip
-              cursor={{ fill: 'hsl(var(--muted-foreground))', opacity: 0.1 }}
+              cursor={{ fill: 'var(--muted-foreground)', opacity: 0.1 }}
               wrapperStyle={{ zIndex: 50, outline: 'none' }}
               formatter={(value: number, name: string, item: any) => {
                 const count = item?.payload?.count ?? 0
@@ -92,13 +92,13 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 8,
-                backgroundColor: 'hsl(var(--popover))',
-                color: 'hsl(var(--popover-foreground))',
-                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'var(--popover)',
+                color: 'var(--popover-foreground)',
+                border: '1px solid var(--border)',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
               }}
-              labelStyle={{ color: 'hsl(var(--popover-foreground))', marginBottom: 4 }}
-              itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+              labelStyle={{ color: 'var(--popover-foreground)', marginBottom: 4 }}
+              itemStyle={{ color: 'var(--popover-foreground)' }}
             />
             <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={28}>
               {data.map((entry, index) => (
