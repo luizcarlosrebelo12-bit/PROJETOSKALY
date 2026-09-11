@@ -72,12 +72,12 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               dataKey="name"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+              tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+              tick={{ fill: 'hsl(var(--foreground))', fontSize: 10 }}
               tickFormatter={formatCurrencyCompact}
               width={48}
             />
