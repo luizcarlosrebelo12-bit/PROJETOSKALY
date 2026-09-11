@@ -9,6 +9,30 @@ interface EntradaChartProps {
   hideValues?: boolean
 }
 
+// Tick customizado usando classe do Tailwind (fill-foreground),
+// que resolve corretamente a cor certa em cada tema.
+function AxisTick({ x, y, payload, textAnchor = 'middle', dy = 0 }: any) {
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={dy}
+      textAnchor={textAnchor}
+      className="fill-foreground text-[11px]"
+    >
+      {payload.value}
+    </text>
+  )
+}
+
+function YAxisTick({ x, y, payload }: any) {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" className="fill-foreground text-[10px]">
+      {payload.value}
+    </text>
+  )
+}
+
 export function EntradaChart({ summary, currentMonth, hideValues = false }: EntradaChartProps) {
   const hasData = summary.some((m) => m.count > 0)
 
@@ -34,7 +58,6 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     }).format(value)
   }
 
-  // Formato compacto pro eixo Y (R$ 1 mil, R$ 500, etc)
   const formatCurrencyCompact = (value: number) => {
     if (hideValues) return '••••'
     if (value === 0) return 'R$ 0'
@@ -53,7 +76,6 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
     isCurrent: m.month === currentMonth,
   }))
 
-  // Só os meses com entrada, pra lista abaixo do gráfico
   const monthsWithEntrada = data.filter((m) => m.count > 0)
 
   const totalCount = summary.reduce((sum, m) => sum + m.count, 0)
@@ -72,12 +94,12 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
               dataKey="name"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'var(--foreground)', fontSize: 11 }}
+              tick={<AxisTick />}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'var(--foreground)', fontSize: 10 }}
+              tick={<YAxisTick />}
               tickFormatter={formatCurrencyCompact}
               width={48}
             />
@@ -112,7 +134,6 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
         </ResponsiveContainer>
       </div>
 
-      {/* Lista dos valores por mês — evita sobreposição de texto em cima das barras */}
       {!hideValues && (
         <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t pt-2 text-[11px] text-muted-foreground">
           {monthsWithEntrada.map((m) => (
