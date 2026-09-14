@@ -11,7 +11,7 @@ interface EntradaChartProps {
 
 // Tick customizado usando classe do Tailwind (fill-foreground),
 // que resolve corretamente a cor certa em cada tema.
-function AxisTick({ x, y, payload, textAnchor = 'middle', dy = 0 }: any) {
+function AxisTick({ x, y, payload, textAnchor = 'middle', dy = 8 }: any) {
   return (
     <text
       x={x}
@@ -88,7 +88,7 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
       </h3>
       <div className="h-[180px] w-full sm:h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }} barCategoryGap="30%">
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 8 }} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
             <XAxis
               dataKey="name"
