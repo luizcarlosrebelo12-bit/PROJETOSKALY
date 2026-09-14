@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidateTag } from 'next/cache'
-import type { ProjectFormData, EvaluationFormData } from '@/lib/types'
+import type { ProjectFormData, EvaluationFormData, EntradaOrigem } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
 // Helpers de rollover automático de mês
@@ -109,6 +109,7 @@ export async function createProject(year: number, month: number, formData: Proje
       entrada_valor: formData.entrada_valor,
       entrada_data: formData.entrada_data || null,
       entrada_obs: formData.entrada_obs,
+      entrada_origem: formData.entrada_origem || 'EIXO',
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -157,6 +158,7 @@ export async function updateProject(id: string, formData: ProjectFormData) {
       entrada_valor: formData.entrada_valor,
       entrada_data: formData.entrada_data || null,
       entrada_obs: formData.entrada_obs,
+      entrada_origem: formData.entrada_origem || 'EIXO',
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -445,18 +447,26 @@ export async function deleteYear(year: number) {
 // Agrupa por mês em que a ENTRADA foi paga (usa entrada_data, não o
 // year/month do projeto) — assim "quantos projetos tiveram entrada em
 // agosto" bate certinho mesmo que o projeto esteja lançado em outro mês.
-export async function getEntradaSummary(year: number) {
+// Aceita um filtro opcional de origem (EIXO, OUTROS, EU, EIXO-OUTROS);
+// se não for informado, traz todas as origens somadas.
+export async function getEntradaSummary(year: number, origem?: EntradaOrigem) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('projects')
-    .select('marca, cidade, entrada_valor, entrada_data')
+    .select('marca, cidade, entrada_valor, entrada_data, entrada_origem')
     .eq('user_id', user.id)
     .eq('is_evaluation', false)
     .not('entrada_data', 'is', null)
+
+  if (origem) {
+    query = query.eq('entrada_origem', origem)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error fetching entrada summary:', error)

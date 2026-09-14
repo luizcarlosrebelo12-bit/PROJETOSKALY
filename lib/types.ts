@@ -14,6 +14,9 @@ export type EvaluationStage =
   | 'CONTRATO DE LOCAÇÃO' 
   | 'BUSCA POR PONTO'
 
+// Origem da entrada — quem recebeu o valor de entrada do projeto
+export type EntradaOrigem = 'EIXO' | 'OUTROS' | 'EU' | 'EIXO-OUTROS'
+
 export interface Project {
   id: string
   user_id: string
@@ -32,6 +35,7 @@ export interface Project {
   entrada_valor: number | null
   entrada_data: string | null
   entrada_obs: string | null
+  entrada_origem: EntradaOrigem | null
 
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
@@ -65,6 +69,7 @@ export interface ProjectFormData {
   entrada_valor: number | null
   entrada_data: string | null
   entrada_obs: string | null
+  entrada_origem: EntradaOrigem
 
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
@@ -172,6 +177,15 @@ export const EVALUATION_STAGE_COLORS: Record<EvaluationStage, string> = {
   'CONTRATO DE LOCAÇÃO': 'bg-purple-100 text-purple-800',
   'BUSCA POR PONTO': 'bg-orange-100 text-orange-800',
 }
+
+// Opções de origem da entrada — usadas no formulário de projeto e
+// no filtro do gráfico "Entradas por Mês".
+export const ENTRADA_ORIGEM_OPTIONS: EntradaOrigem[] = [
+  'EIXO',
+  'OUTROS',
+  'EU',
+  'EIXO-OUTROS',
+]
 
 // Paleta de sugestão rápida pro seletor de cor do projeto em avaliação
 export const COLOR_PALETTE = [

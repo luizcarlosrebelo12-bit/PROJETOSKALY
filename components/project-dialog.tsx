@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Project, ProjectFormData, ProjectStatus } from '@/lib/types'
-import { STATUS_OPTIONS } from '@/lib/types'
+import type { Project, ProjectFormData, ProjectStatus, EntradaOrigem } from '@/lib/types'
+import { STATUS_OPTIONS, ENTRADA_ORIGEM_OPTIONS } from '@/lib/types'
 import { createProject, updateProject, getEntradaValoresPorMarca } from '@/app/actions/projects'
 
 interface ProjectDialogProps {
@@ -44,6 +44,7 @@ const emptyForm: ProjectFormData = {
   entrada_valor: null,
   entrada_data: null,
   entrada_obs: null,
+  entrada_origem: 'EIXO',
   pagamento_final_valor: null,
   pagamento_final_data: null,
   pagamento_final_obs: null,
@@ -104,6 +105,7 @@ export function ProjectDialog({
         entrada_valor: project.entrada_valor != null ? Number(project.entrada_valor) : null,
         entrada_data: project.entrada_data || null,
         entrada_obs: project.entrada_obs || null,
+        entrada_origem: project.entrada_origem || 'EIXO',
         pagamento_final_valor: project.pagamento_final_valor != null ? Number(project.pagamento_final_valor) : null,
         pagamento_final_data: project.pagamento_final_data || null,
         pagamento_final_obs: project.pagamento_final_obs || null,
@@ -325,6 +327,29 @@ export function ProjectDialog({
                 />
               </div>
             </div>
+
+            {/* Origem da entrada — quem recebeu esse valor */}
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="entrada_origem">Origem da Entrada</Label>
+              <Select
+                value={formData.entrada_origem}
+                onValueChange={(value: EntradaOrigem) =>
+                  setFormData({ ...formData, entrada_origem: value })
+                }
+              >
+                <SelectTrigger id="entrada_origem">
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ENTRADA_ORIGEM_OPTIONS.map((origem) => (
+                    <SelectItem key={origem} value={origem}>
+                      {origem}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="mt-4 space-y-2">
               <Label htmlFor="entrada_obs">Observações</Label>
               <Textarea
