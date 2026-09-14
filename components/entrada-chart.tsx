@@ -1,10 +1,28 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { MONTHS_SHORT } from '@/lib/types'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+// Ajuste este tipo conforme o nome real dos campos no seu banco/tipo Entrada.
+// origem_entrada: 'EIXO' | 'OUTROS' | 'EU' | 'EIXO-OUTROS'
+export interface EntradaRecord {
+  data_entrada: string // formato ISO 'YYYY-MM-DD' (ajuste se for diferente)
+  valor_entrada: number
+  origem_entrada: string
+}
+
+const ORIGENS = ['EIXO', 'OUTROS', 'EU', 'EIXO-OUTROS'] as const
 
 interface EntradaChartProps {
-  summary: { month: number; count: number; total: number }[]
+  entradas: EntradaRecord[]
   currentMonth: number
   hideValues?: boolean
 }
@@ -33,21 +51,40 @@ function YAxisTick({ x, y, payload }: any) {
   )
 }
 
-export function EntradaChart({ summary, currentMonth, hideValues = false }: EntradaChartProps) {
-  const hasData = summary.some((m) => m.count > 0)
+function getMonthFromDate(dateStr: string): number {
+  // Espera 'YYYY-MM-DD'. Se seu campo vier em outro formato (ex: dd/mm/yyyy),
+  // ajuste esta função.
+  const [, month] = dateStr.split('-')
+  return Number(month)
+}
 
-  if (!hasData) {
-    return (
-      <div className="rounded-lg border bg-card p-4 sm:p-6">
-        <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
-          Entradas por Mês
-        </h3>
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          Nenhuma entrada registrada ainda
-        </p>
-      </div>
-    )
-  }
+export function EntradaChart({ entradas, currentMonth, hideValues = false }: EntradaChartProps) {
+  const [origemFiltro, setOrigemFiltro] = useState<string>('todas')
+
+  const entradasFiltradas = useMemo(() => {
+    if (origemFiltro === 'todas') return entradas
+    return entradas.filter((e) => e.origem_entrada === origemFiltro)
+  }, [entradas, origemFiltro])
+
+  const summary = useMemo(() => {
+    const base = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      count: 0,
+      total: 0,
+    }))
+
+    for (const entrada of entradasFiltradas) {
+      const month = getMonthFromDate(entrada.data_entrada)
+      if (month >= 1 && month <= 12) {
+        base[month - 1].count += 1
+        base[month - 1].total += entrada.valor_entrada
+      }
+    }
+
+    return base
+  }, [entradasFiltradas])
+
+  const hasData = summary.some((m) => m.count > 0)
 
   const formatCurrency = (value: number) => {
     if (hideValues) return 'R$ ••••'
@@ -81,11 +118,48 @@ export function EntradaChart({ summary, currentMonth, hideValues = false }: Entr
   const totalCount = summary.reduce((sum, m) => sum + m.count, 0)
   const totalValue = summary.reduce((sum, m) => sum + m.total, 0)
 
+  const filtroSelect = (
+    <Select value={origemFiltro} onValueChange={setOrigemFiltro}>
+      <SelectTrigger className="h-8 w-[150px] text-xs">
+        <SelectValue placeholder="Origem" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="todas">Todas</SelectItem>
+        {ORIGENS.map((origem) => (
+          <SelectItem key={origem} value={origem}>
+            {origem}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+
+  if (!hasData) {
+    return (
+      <div className="rounded-lg border bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground sm:text-base">
+            Entradas por Mês
+          </h3>
+          {filtroSelect}
+        </div>
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          {origemFiltro === 'todas'
+            ? 'Nenhuma entrada registrada ainda'
+            : `Nenhuma entrada com origem "${origemFiltro}"`}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-lg border bg-card p-4 sm:p-6">
-      <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
-        Entradas por Mês
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground sm:text-base">
+          Entradas por Mês
+        </h3>
+        {filtroSelect}
+      </div>
       <div className="h-[180px] w-full sm:h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 8 }} barCategoryGap="30%">

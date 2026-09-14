@@ -9,6 +9,7 @@ interface ProjetoDetalhe {
   cidade: string
   valor: number
   data: string
+  origem?: string // presente apenas nos registros de Entrada
 }
 
 interface DetalhamentoTableProps {
@@ -115,6 +116,7 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('todos')
+  const [origemFilter, setOrigemFilter] = useState('todas')
   const [projetoFilter, setProjetoFilter] = useState<Set<string>>(new Set())
   const [cidadeFilter, setCidadeFilter] = useState<Set<string>>(new Set())
 
@@ -133,6 +135,13 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
       ),
     [data]
   )
+  // Só existe quando os registros têm o campo `origem` (ex: cards de Entradas)
+  const origemOptions = useMemo(
+    () =>
+      Array.from(new Set(data.map((p) => p.origem).filter((o): o is string => !!o))).sort(),
+    [data]
+  )
+  const hasOrigemField = origemOptions.length > 0
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -140,6 +149,7 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
       if (projetoFilter.size > 0 && !projetoFilter.has(p.marca)) return false
       if (cidadeFilter.size > 0 && !cidadeFilter.has(p.cidade)) return false
       if (monthFilter !== 'todos' && p.data.split('-')[1] !== monthFilter) return false
+      if (hasOrigemField && origemFilter !== 'todas' && p.origem !== origemFilter) return false
       if (term) {
         const matchesNome =
           p.marca.toLowerCase().includes(term) || p.cidade.toLowerCase().includes(term)
@@ -148,17 +158,19 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
       }
       return true
     })
-  }, [data, search, monthFilter, projetoFilter, cidadeFilter])
+  }, [data, search, monthFilter, origemFilter, hasOrigemField, projetoFilter, cidadeFilter])
 
   const hasActiveFilters =
     search.trim() !== '' ||
     monthFilter !== 'todos' ||
+    origemFilter !== 'todas' ||
     projetoFilter.size > 0 ||
     cidadeFilter.size > 0
 
   const clearFilters = () => {
     setSearch('')
     setMonthFilter('todos')
+    setOrigemFilter('todas')
     setProjetoFilter(new Set())
     setCidadeFilter(new Set())
   }
@@ -214,6 +226,20 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                     </option>
                   ))}
                 </select>
+                {hasOrigemField && (
+                  <select
+                    value={origemFilter}
+                    onChange={(e) => setOrigemFilter(e.target.value)}
+                    className="rounded-md border bg-background px-2 py-1.5 text-xs sm:text-sm"
+                  >
+                    <option value="todas">Todas as origens</option>
+                    {origemOptions.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {hasActiveFilters && (
                   <button
                     type="button"
@@ -269,7 +295,10 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                           </span>
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                          <span className="truncate">{p.cidade}</span>
+                          <span className="truncate">
+                            {p.cidade}
+                            {hasOrigemField && p.origem && ` · ${p.origem}`}
+                          </span>
                           <span className="whitespace-nowrap">{formatDate(p.data)}</span>
                         </div>
                       </div>
@@ -313,6 +342,9 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                               />
                             </span>
                           </th>
+                          {hasOrigemField && (
+                            <th className="py-2 pr-4 font-medium">Origem</th>
+                          )}
                           <th className="py-2 pr-4 font-medium">Data</th>
                           <th className="py-2 text-right font-medium">Valor</th>
                         </tr>
@@ -322,6 +354,9 @@ export function DetalhamentoTable({ title, data, emptyMessage, formatCurrency }:
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-2 pr-4 text-foreground">{p.marca}</td>
                             <td className="py-2 pr-4 text-muted-foreground">{p.cidade}</td>
+                            {hasOrigemField && (
+                              <td className="py-2 pr-4 text-muted-foreground">{p.origem ?? '—'}</td>
+                            )}
                             <td className="py-2 pr-4 text-muted-foreground">{formatDate(p.data)}</td>
                             <td className="py-2 text-right font-medium text-foreground">
                               {formatCurrency(p.valor)}
