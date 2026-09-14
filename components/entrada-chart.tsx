@@ -60,11 +60,12 @@ function getMonthFromDate(dateStr: string): number {
 
 export function EntradaChart({ entradas, currentMonth, hideValues = false }: EntradaChartProps) {
   const [origemFiltro, setOrigemFiltro] = useState<string>('todas')
+  const safeEntradas = entradas ?? []
 
   const entradasFiltradas = useMemo(() => {
-    if (origemFiltro === 'todas') return entradas
-    return entradas.filter((e) => e.origem_entrada === origemFiltro)
-  }, [entradas, origemFiltro])
+    if (origemFiltro === 'todas') return safeEntradas
+    return safeEntradas.filter((e) => e.origem_entrada === origemFiltro)
+  }, [safeEntradas, origemFiltro])
 
   const summary = useMemo(() => {
     const base = Array.from({ length: 12 }, (_, i) => ({
