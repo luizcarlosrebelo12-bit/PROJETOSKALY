@@ -489,6 +489,43 @@ export async function getEntradaSummary(year: number) {
   return months
 }
 
+// Agrupa o VALOR das entradas por marca (não contagem de projetos) —
+// usado no gráfico "Entradas por Marca" nas Estatísticas, pra ver quem
+// pagou mais em entrada, não só quem tem mais projetos. Usa entrada_data,
+// mesmo critério da getEntradaSummary, pra ficar consistente.
+export async function getEntradaByBrand(year: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('marca, entrada_valor, entrada_data')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', false)
+    .not('entrada_data', 'is', null)
+
+  if (error) {
+    console.error('Error fetching entrada by brand:', error)
+    return []
+  }
+
+  const byBrand: Record<string, number> = {}
+
+  data?.forEach((p) => {
+    if (!p.entrada_data) return
+    const [entradaYear] = p.entrada_data.split('-').map(Number)
+    if (entradaYear !== year) return
+    const marca = p.marca || 'Não definida'
+    byBrand[marca] = (byBrand[marca] || 0) + (Number(p.entrada_valor) || 0)
+  })
+
+  return Object.entries(byBrand)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+}
+
 // Busca todos os valores de entrada já lançados pra uma marca (usado no
 // project-dialog pra avisar quando um valor novo destoa muito da média
 // histórica dessa marca). Ignora entradas nulas/zeradas e, opcionalmente,

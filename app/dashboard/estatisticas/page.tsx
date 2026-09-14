@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { getYearStats, deleteYear } from '@/app/actions/projects'
+import { getYearStats, deleteYear, getEntradaByBrand } from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ interface YearStats {
 export default function EstatisticasPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [stats, setStats] = useState<YearStats | null>(null)
+  const [entradaByBrand, setEntradaByBrand] = useState<{ name: string; value: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
@@ -47,8 +48,12 @@ export default function EstatisticasPage() {
   async function fetchStats() {
     setIsLoading(true)
     try {
-      const data = await getYearStats(year)
+      const [data, entradaBrandData] = await Promise.all([
+        getYearStats(year),
+        getEntradaByBrand(year),
+      ])
       setStats(data)
+      setEntradaByBrand(entradaBrandData)
     } catch (error) {
       console.error('Error fetching stats:', error)
     } finally {
@@ -310,20 +315,25 @@ export default function EstatisticasPage() {
               </Card>
             </div>
 
-            {/* Gráfico de barras - Quantidade por marca */}
+            {/* Gráfico de barras - Entradas por marca */}
             <Card className="p-4 sm:p-6">
               <h3 className="mb-4 text-center text-sm font-semibold text-foreground sm:text-base">
-                Projetos por Marca
+                Entradas por Marca
               </h3>
               <div className="h-64 sm:h-80 lg:h-96">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={stats.byBrand}
+                    data={entradaByBrand}
                     layout="vertical"
                     margin={{ left: 5, right: 20, top: 5, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis type="number" stroke="var(--muted-foreground)" tick={{ fontSize: 11 }} />
+                    <XAxis
+                      type="number"
+                      stroke="var(--muted-foreground)"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => (hideValues ? '••••' : formatCurrency(v))}
+                    />
                     <YAxis
                       type="category"
                       dataKey="name"
@@ -332,7 +342,7 @@ export default function EstatisticasPage() {
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip
-                      formatter={(value: number) => [`${value} projeto(s)`, 'Quantidade']}
+                      formatter={(value: number) => [formatCurrency(value), 'Entradas']}
                       contentStyle={{
                         backgroundColor: 'var(--card)',
                         borderColor: 'var(--border)',
