@@ -91,6 +91,9 @@ export function ProjectDialog({
   const [entradaWarning, setEntradaWarning] = useState<string | null>(null)
   const [entradaConfirmada, setEntradaConfirmada] = useState(false)
 
+  // Erro de validação: entrada com valor mas sem data
+  const [entradaDataError, setEntradaDataError] = useState(false)
+
   useEffect(() => {
     if (project) {
       setFormData({
@@ -115,6 +118,7 @@ export function ProjectDialog({
     }
     setEntradaWarning(null)
     setEntradaConfirmada(false)
+    setEntradaDataError(false)
   }, [project, open])
 
   // Busca o histórico de entradas da marca digitada (com debounce simples)
@@ -148,6 +152,13 @@ export function ProjectDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.entrada_valor, entradaHistorico])
 
+  // Sempre que valor ou data da entrada mudam, revalida se a data é obrigatória
+  useEffect(() => {
+    const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
+    const temData = !!formData.entrada_data
+    setEntradaDataError(temValor && !temData)
+  }, [formData.entrada_valor, formData.entrada_data])
+
   const isEntregue = formData.andamento === 'ENTREGUE'
 
   const saveProject = async () => {
@@ -168,6 +179,14 @@ export function ProjectDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Entrada com valor mas sem data — não deixa salvar
+    const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
+    const temData = !!formData.entrada_data
+    if (temValor && !temData) {
+      setEntradaDataError(true)
+      return
+    }
 
     // Se tem aviso de valor destoante e ainda não foi confirmado, para aqui
     // e deixa o aviso visível pro usuário confirmar ou corrigir.
@@ -316,7 +335,12 @@ export function ProjectDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entrada_data">Data da Entrada</Label>
+                <Label htmlFor="entrada_data">
+                  Data da Entrada
+                  {formData.entrada_valor != null && formData.entrada_valor > 0 && (
+                    <span className="ml-0.5 text-destructive">*</span>
+                  )}
+                </Label>
                 <Input
                   id="entrada_data"
                   type="date"
@@ -324,7 +348,13 @@ export function ProjectDialog({
                   onChange={(e) =>
                     setFormData({ ...formData, entrada_data: e.target.value || null })
                   }
+                  className={entradaDataError ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
+                {entradaDataError && (
+                  <p className="text-xs text-destructive">
+                    Informe a data da entrada — obrigatória quando há valor lançado.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -457,7 +487,10 @@ export function ProjectDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || (!!entradaWarning && !entradaConfirmada)}>
+            <Button
+              type="submit"
+              disabled={isLoading || entradaDataError || (!!entradaWarning && !entradaConfirmada)}
+            >
               {isLoading ? 'Salvando...' : project ? 'Salvar' : 'Criar'}
             </Button>
           </div>

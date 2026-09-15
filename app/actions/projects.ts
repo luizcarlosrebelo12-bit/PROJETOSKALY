@@ -531,7 +531,37 @@ export async function getEntradasRaw(year: number) {
       entrada_origem: p.entrada_origem,
     }))
 }
+// Retorna os meses (do ano/mês do PROJETO, não da entrada) que têm pelo
+// menos um projeto sem valor de entrada lançado ainda — usado pra acender
+// o sininho de alerta no Resumo Anual, avisando "falta cobrar entrada".
+export async function getMesesComEntradaFaltando(year: number): Promise<number[]> {
+  const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('month, entrada_valor')
+    .eq('user_id', user.id)
+    .eq('year', year)
+    .eq('is_evaluation', false)
+
+  if (error) {
+    console.error('Error fetching meses com entrada faltando:', error)
+    return []
+  }
+
+  const meses = new Set<number>()
+  data?.forEach((p) => {
+    const valor = Number(p.entrada_valor) || 0
+    if (valor <= 0) {
+      meses.add(p.month)
+    }
+  })
+
+  return Array.from(meses).sort((a, b) => a - b)
+}
 // Agrupa o VALOR das entradas por marca (não contagem de projetos) —
 // usado no gráfico "Entradas por Marca" nas Estatísticas, pra ver quem
 // pagou mais em entrada, não só quem tem mais projetos. Usa entrada_data,
