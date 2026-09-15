@@ -8,7 +8,12 @@ import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
 import { EntradaChart } from '@/components/entrada-chart'
 import { Button } from '@/components/ui/button'
-import { getProjects, getYearSummary, getEntradasRaw } from '@/app/actions/projects'
+import {
+  getProjects,
+  getYearSummary,
+  getEntradasRaw,
+  getMesesComEntradaFaltando,
+} from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import type { Project } from '@/lib/types'
 import type { EntradaRecord } from '@/components/entrada-chart'
@@ -19,20 +24,23 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [summary, setSummary] = useState<{ month: number; total: number; count: number }[]>([])
   const [entradasRaw, setEntradasRaw] = useState<EntradaRecord[]>([])
+  const [mesesPendentes, setMesesPendentes] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { hideValues, toggleHideValues } = useHideValues()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [projectsData, summaryData, entradasData] = await Promise.all([
+      const [projectsData, summaryData, entradasData, pendentesData] = await Promise.all([
         getProjects(year, month),
         getYearSummary(year),
         getEntradasRaw(year),
+        getMesesComEntradaFaltando(year),
       ])
       setProjects(projectsData)
       setSummary(summaryData)
       setEntradasRaw(entradasData)
+      setMesesPendentes(pendentesData)
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -117,6 +125,7 @@ export default function DashboardPage() {
           currentMonth={month}
           onMonthClick={handleMonthClick}
           hideValues={hideValues}
+          mesesPendentes={mesesPendentes}
         />
 
         {isLoading ? (
