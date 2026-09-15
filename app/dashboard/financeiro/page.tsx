@@ -18,10 +18,12 @@ import { Card } from '@/components/ui/card'
 import {
   getYearStats,
   getEntradaSummary,
+  getEntradasRaw,
   getPagamentoFinalSummary,
 } from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import { EntradaChart } from '@/components/entrada-chart'
+import type { EntradaRecord } from '@/components/entrada-chart'
 import { PagamentoFinalChart } from '@/components/pagamento-final-chart'
 import { DetalhamentoTable } from '@/components/detalhamento-table'
 
@@ -51,6 +53,7 @@ export default function FinanceiroPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [stats, setStats] = useState<YearStats | null>(null)
   const [entradaSummary, setEntradaSummary] = useState<MonthSummary[]>([])
+  const [entradasRaw, setEntradasRaw] = useState<EntradaRecord[]>([])
   const [pagamentoSummary, setPagamentoSummary] = useState<MonthSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { hideValues, toggleHideValues } = useHideValues()
@@ -65,13 +68,15 @@ export default function FinanceiroPage() {
   async function fetchData() {
     setIsLoading(true)
     try {
-      const [statsData, entradaData, pagamentoData] = await Promise.all([
+      const [statsData, entradaData, entradasRawData, pagamentoData] = await Promise.all([
         getYearStats(year),
         getEntradaSummary(year),
+        getEntradasRaw(year),
         getPagamentoFinalSummary(year),
       ])
       setStats(statsData)
       setEntradaSummary(entradaData)
+      setEntradasRaw(entradasRawData)
       setPagamentoSummary(pagamentoData)
     } catch (error) {
       console.error('Error fetching financeiro data:', error)
@@ -96,12 +101,6 @@ export default function FinanceiroPage() {
   const pagamentoList = pagamentoSummary
     .flatMap((m) => m.projetos)
     .sort((a, b) => (a.data < b.data ? 1 : -1))
-
-  const entradaChartSummary = entradaSummary.map((m) => ({
-    month: m.month,
-    count: m.count,
-    total: m.total,
-  }))
 
   const pagamentoChartSummary = pagamentoSummary.map((m) => ({
     month: m.month,
@@ -219,7 +218,7 @@ export default function FinanceiroPage() {
             {/* Gráficos */}
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               <EntradaChart
-                summary={entradaChartSummary}
+                entradas={entradasRaw}
                 currentMonth={currentMonth}
                 hideValues={hideValues}
               />

@@ -8,30 +8,31 @@ import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
 import { EntradaChart } from '@/components/entrada-chart'
 import { Button } from '@/components/ui/button'
-import { getProjects, getYearSummary, getEntradaSummary } from '@/app/actions/projects'
+import { getProjects, getYearSummary, getEntradasRaw } from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import type { Project } from '@/lib/types'
+import type { EntradaRecord } from '@/components/entrada-chart'
 
 export default function DashboardPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [month, setMonth] = useState(() => new Date().getMonth() + 1)
   const [projects, setProjects] = useState<Project[]>([])
   const [summary, setSummary] = useState<{ month: number; total: number; count: number }[]>([])
-  const [entradaSummary, setEntradaSummary] = useState<{ month: number; count: number; total: number }[]>([])
+  const [entradasRaw, setEntradasRaw] = useState<EntradaRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { hideValues, toggleHideValues } = useHideValues()
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [projectsData, summaryData, entradaData] = await Promise.all([
+      const [projectsData, summaryData, entradasData] = await Promise.all([
         getProjects(year, month),
         getYearSummary(year),
-        getEntradaSummary(year),
+        getEntradasRaw(year),
       ])
       setProjects(projectsData)
       setSummary(summaryData)
-      setEntradaSummary(entradaData)
+      setEntradasRaw(entradasData)
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -135,7 +136,7 @@ export default function DashboardPage() {
               <StatusChart projects={projects} />
               <ArchitectChart projects={projects} />
               <EntradaChart
-                summary={entradaSummary}
+                entradas={entradasRaw}
                 currentMonth={month}
                 hideValues={hideValues}
               />
