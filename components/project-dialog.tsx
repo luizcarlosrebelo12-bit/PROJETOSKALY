@@ -198,6 +198,14 @@ export function ProjectDialog({
   }
 
   const handleConfirmarEntrada = async () => {
+    // Mesmo confirmando o valor destoante, a data continua obrigatória
+    const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
+    const temData = !!formData.entrada_data
+    if (temValor && !temData) {
+      setEntradaDataError(true)
+      return
+    }
+
     setEntradaConfirmada(true)
     await saveProject()
   }
@@ -415,7 +423,7 @@ export function ProjectDialog({
                         type="button"
                         size="sm"
                         onClick={handleConfirmarEntrada}
-                        disabled={isLoading}
+                        disabled={isLoading || entradaDataError}
                       >
                         {isLoading ? 'Salvando...' : 'Confirmar mesmo assim'}
                       </Button>
