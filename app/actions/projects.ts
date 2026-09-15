@@ -477,7 +477,7 @@ export async function getEntradaSummary(year: number, origem?: EntradaOrigem) {
     month: i + 1,
     count: 0,
     total: 0,
-    projetos: [] as { marca: string; cidade: string; valor: number; data: string }[],
+    projetos: [] as { marca: string; cidade: string; valor: number; data: string; origem?: string }[],
   }))
 
   data?.forEach((p) => {
@@ -493,6 +493,7 @@ export async function getEntradaSummary(year: number, origem?: EntradaOrigem) {
       cidade: p.cidade || '-',
       valor: Number(p.entrada_valor) || 0,
       data: p.entrada_data,
+      origem: p.entrada_origem || undefined,
     })
   })
 

@@ -32,6 +32,7 @@ interface ProjetoDetalhe {
   cidade: string
   valor: number
   data: string
+  origem?: string
 }
 
 interface MonthSummary {
