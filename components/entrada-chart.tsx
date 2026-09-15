@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { MONTHS_SHORT } from '@/lib/types'
+import type { EntradaOrigem } from '@/lib/types'
+import { ENTRADA_ORIGEM_OPTIONS } from '@/lib/types'
 import {
   Select,
   SelectContent,
@@ -11,15 +13,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-// Ajuste este tipo conforme o nome real dos campos no seu banco/tipo Entrada.
-// origem_entrada: 'EIXO' | 'OUTROS' | 'EU' | 'EIXO-OUTROS'
+// Formato de cada entrada "crua" vinda do banco (uma linha por projeto
+// que já teve entrada lançada). Nomes batendo com as colunas reais.
 export interface EntradaRecord {
-  data_entrada: string // formato ISO 'YYYY-MM-DD' (ajuste se for diferente)
-  valor_entrada: number
-  origem_entrada: string
+  entrada_data: string // formato 'YYYY-MM-DD'
+  entrada_valor: number
+  entrada_origem: EntradaOrigem | null
 }
-
-const ORIGENS = ['EIXO', 'OUTROS', 'EU', 'EIXO-OUTROS'] as const
 
 interface EntradaChartProps {
   entradas: EntradaRecord[]
@@ -52,8 +52,7 @@ function YAxisTick({ x, y, payload }: any) {
 }
 
 function getMonthFromDate(dateStr: string): number {
-  // Espera 'YYYY-MM-DD'. Se seu campo vier em outro formato (ex: dd/mm/yyyy),
-  // ajuste esta função.
+  // Espera 'YYYY-MM-DD'.
   const [, month] = dateStr.split('-')
   return Number(month)
 }
@@ -64,7 +63,7 @@ export function EntradaChart({ entradas, currentMonth, hideValues = false }: Ent
 
   const entradasFiltradas = useMemo(() => {
     if (origemFiltro === 'todas') return safeEntradas
-    return safeEntradas.filter((e) => e.origem_entrada === origemFiltro)
+    return safeEntradas.filter((e) => e.entrada_origem === origemFiltro)
   }, [safeEntradas, origemFiltro])
 
   const summary = useMemo(() => {
@@ -75,10 +74,11 @@ export function EntradaChart({ entradas, currentMonth, hideValues = false }: Ent
     }))
 
     for (const entrada of entradasFiltradas) {
-      const month = getMonthFromDate(entrada.data_entrada)
+      if (!entrada.entrada_data) continue
+      const month = getMonthFromDate(entrada.entrada_data)
       if (month >= 1 && month <= 12) {
         base[month - 1].count += 1
-        base[month - 1].total += entrada.valor_entrada
+        base[month - 1].total += Number(entrada.entrada_valor) || 0
       }
     }
 
@@ -126,7 +126,7 @@ export function EntradaChart({ entradas, currentMonth, hideValues = false }: Ent
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="todas">Todas</SelectItem>
-        {ORIGENS.map((origem) => (
+        {ENTRADA_ORIGEM_OPTIONS.map((origem) => (
           <SelectItem key={origem} value={origem}>
             {origem}
           </SelectItem>

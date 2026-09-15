@@ -498,6 +498,39 @@ export async function getEntradaSummary(year: number, origem?: EntradaOrigem) {
 
   return months
 }
+// Busca as entradas "cruas" do ano (uma linha por projeto com entrada
+// lançada), sem agrupar por mês — usado pelo EntradaChart, que agora
+// filtra e agrupa por origem no próprio componente (client-side).
+export async function getEntradasRaw(year: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('entrada_data, entrada_valor, entrada_origem')
+    .eq('user_id', user.id)
+    .eq('is_evaluation', false)
+    .not('entrada_data', 'is', null)
+
+  if (error) {
+    console.error('Error fetching entradas raw:', error)
+    return []
+  }
+
+  return (data || [])
+    .filter((p) => {
+      if (!p.entrada_data) return false
+      const [entradaYear] = p.entrada_data.split('-').map(Number)
+      return entradaYear === year
+    })
+    .map((p) => ({
+      entrada_data: p.entrada_data as string,
+      entrada_valor: Number(p.entrada_valor) || 0,
+      entrada_origem: p.entrada_origem,
+    }))
+}
 
 // Agrupa o VALOR das entradas por marca (não contagem de projetos) —
 // usado no gráfico "Entradas por Marca" nas Estatísticas, pra ver quem
