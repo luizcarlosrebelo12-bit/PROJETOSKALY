@@ -357,7 +357,7 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      
+                      <a
                         href={getFileUrl(file.pathname)}
                         target="_blank"
                         rel="noopener noreferrer"
