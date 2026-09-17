@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, Plus, FolderOpen, Check } from 'lucide-react'
+import { Pencil, Trash2, Plus, FolderOpen, Check, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -17,6 +17,7 @@ import type { Project, ProjectStatus } from '@/lib/types'
 import { STATUS_COLORS } from '@/lib/types'
 import { ProjectDialog } from './project-dialog'
 import { deleteProject } from '@/app/actions/projects'
+import { getFormularioLink } from '@/lib/google-form'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -156,7 +157,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
             <col className="w-[10%]" />
             {/* Andamento */}
             <col className="w-[10%]" />
-            {/* Ações */}
+            {/* Ações — ficou um pouco mais larga por causa do botão novo */}
             <col className="w-[8%]" />
           </colgroup>
           <TableHeader>
@@ -233,6 +234,15 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                             <FolderOpen className="h-3.5 w-3.5 text-primary" />
                           </Button>
                         </Link>
+                        <a
+                          href={getFormularioLink(project.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar formulário">
+                            <Send className="h-3.5 w-3.5 text-primary" />
+                          </Button>
+                        </a>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -345,6 +355,15 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                         <FolderOpen className="h-4 w-4 text-primary" />
                       </Button>
                     </Link>
+                    <a
+                      href={getFormularioLink(project.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="ghost" size="icon" title="Enviar formulário">
+                        <Send className="h-4 w-4 text-primary" />
+                      </Button>
+                    </a>
                     <Button
                       variant="ghost"
                       size="icon"
