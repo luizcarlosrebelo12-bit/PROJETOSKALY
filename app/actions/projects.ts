@@ -2,7 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidateTag } from 'next/cache'
-import type { ProjectFormData, EvaluationFormData, EntradaOrigem } from '@/lib/types'
+
+import type {
+  ProjectFormData,
+  EvaluationFormData,
+  EntradaOrigem,
+  ProjectEvaluation,
+} from '@/lib/types'
 
 // ---------------------------------------------------------------------------
 // Helpers de rollover automático de mês
@@ -842,4 +848,29 @@ export async function confirmEvaluationProject(
   }
 
   revalidateTag('projects', 'max')
+}
+
+export async function getProjectEvaluation(
+  projectId: string
+): Promise<ProjectEvaluation | null> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('project_evaluations')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Erro ao buscar avaliação:', error)
+    throw new Error('Erro ao buscar avaliação')
+  }
+
+  return data as ProjectEvaluation | null
 }
