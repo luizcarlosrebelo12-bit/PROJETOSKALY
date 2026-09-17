@@ -60,11 +60,11 @@ import {
   saveFileMetadata,
   deleteFile,
   moveFile,
+  uploadFile as uploadFileToBlob,
 } from '@/app/actions/files'
 
-// Lista expandida com os novos formatos solicitados e formatos padrão comuns
 const ALLOWED_EXTENSIONS = [
-  ...DOC_EXTENSIONS, // mantém os originais (pdf, doc, docx, xls, xlsx, zip)
+  ...DOC_EXTENSIONS,
   'jpg',
   'jpeg',
   'png',
@@ -77,12 +77,15 @@ const ALLOWED_EXTENSIONS = [
   'rar',
 ]
 
-// String de aceitação para o input HTML do tipo file
 const ACCEPT_ATTRIBUTES = ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(',')
 
 interface FilesManagerProps {
   projectId: string
   userEmail: string
+}
+
+function calculateBusinessDaysPlaceholder() {
+  // (mantido apenas para não quebrar nada — não usado aqui)
 }
 
 export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
@@ -91,7 +94,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
   const [currentFolder, setCurrentFolder] = useState<FolderType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Dialogs
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [renamingFolder, setRenamingFolder] = useState<FolderType | null>(null)
@@ -101,9 +103,8 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
   const [movingFile, setMovingFile] = useState<FileItem | null>(null)
   const [moveTarget, setMoveTarget] = useState<string>('root')
 
-  // Upload
   const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadResponsavel, setUploadResponsavel] = useState(userEmail)
   const [uploadObs, setUploadObs] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -130,7 +131,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
     loadData()
   }, [loadData])
 
-  // Subpastas da pasta atual
   const childFolders = folders.filter(
     (f) => f.parent_id === (currentFolder?.id ?? null)
   )
@@ -146,22 +146,14 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
     return new Date(date).toLocaleDateString('pt-PT')
   }
 
-  // --- SOLUÇÃO DE SUPORTE LOCAL (EVITA 404) ---
+  // pathname agora é sempre uma URL completa do Vercel Blob (https://...)
   const getFileUrl = (pathname: string) => {
     if (!pathname) return '#'
-    
-    // Se for uma URL externa (HTTP/S) correspondente ao Vercel Blob antigo
     if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
       return pathname
     }
-    
-    // Se o caminho já vier formatado com uploads/
-    if (pathname.includes('uploads/')) {
-      return pathname.startsWith('/') ? pathname : `/${pathname}`
-    }
-    
-    // Caso padrão para os novos uploads locais
-    return `/uploads/${pathname}`
+    // fallback para registros antigos quebrados
+    return pathname.startsWith('/') ? pathname : `/${pathname}`
   }
 
   const handleCreateFolder = async () => {
@@ -205,46 +197,46 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
     const file = e.target.files?.[0]
     if (!file) return
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    
-    // Validação usando a nossa lista expandida
+
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
       setUploadError('Formato não permitido. Formatos suportados: PDF, Word, Excel, PowerPoint, Imagens (PNG, JPG, JPEG, WEBP, GIF), ZIP, RAR, TXT e CSV.')
-      setUploadFile(null)
+      setSelectedFile(null)
       return
     }
     setUploadError('')
-    setUploadFile(file)
+    setSelectedFile(file)
   }
 
   const handleUpload = async () => {
-    if (!uploadFile) return
+    if (!selectedFile) return
     setIsUploading(true)
     setUploadError('')
     try {
-      const ext = uploadFile.name.split('.').pop()?.toLowerCase() || ''
+      const ext = selectedFile.name.split('.').pop()?.toLowerCase() || ''
 
-      // --- BYPASS DE ARMAZENAMENTO LOCAL ---
-      const localPathname = `/uploads/${uploadFile.name}`
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      const { url } = await uploadFileToBlob(formData)
 
       await saveFileMetadata({
         projectId,
         folderId: currentFolder?.id ?? null,
-        nome: uploadFile.name,
-        pathname: localPathname,
+        nome: selectedFile.name,
+        pathname: url,
         tipo: ext,
-        tamanho: uploadFile.size,
+        tamanho: selectedFile.size,
         responsavel: uploadResponsavel,
         observacoes: uploadObs,
       })
 
-      setUploadFile(null)
+      setSelectedFile(null)
       setUploadObs('')
       setUploadOpen(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
       loadData()
     } catch (e) {
       console.error(e)
-      setUploadError('Erro ao registar o ficheiro. Tente novamente.')
+      setUploadError('Erro ao enviar o ficheiro. Tente novamente.')
     } finally {
       setIsUploading(false)
     }
@@ -252,7 +244,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb + ações */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 text-sm">
           <button
@@ -290,7 +281,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </div>
       ) : (
         <>
-          {/* Pastas */}
           {childFolders.length > 0 && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {childFolders.map((folder) => (
@@ -343,7 +333,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
             </div>
           )}
 
-          {/* Ficheiros */}
           <div className="rounded-lg border bg-card">
             {files.length === 0 ? (
               <div className="flex h-32 flex-col items-center justify-center text-center text-muted-foreground">
@@ -368,8 +357,7 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {/* Link de visualização direta sem erro 404 */}
-                      <a
+                      
                         href={getFileUrl(file.pathname)}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -408,7 +396,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </>
       )}
 
-      {/* Dialog Nova Pasta */}
       <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
         <DialogContent>
           <DialogHeader>
@@ -438,7 +425,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Renomear */}
       <Dialog open={!!renamingFolder} onOpenChange={() => setRenamingFolder(null)}>
         <DialogContent>
           <DialogHeader>
@@ -462,7 +448,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Upload */}
       <Dialog open={uploadOpen} onOpenChange={(o) => { if (!isUploading) setUploadOpen(o) }}>
         <DialogContent>
           <DialogHeader>
@@ -507,14 +492,13 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
             <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={isUploading}>
               Cancelar
             </Button>
-            <Button onClick={handleUpload} disabled={!uploadFile || isUploading}>
+            <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
               {isUploading ? 'A enviar...' : 'Enviar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Mover */}
       <Dialog open={!!movingFile} onOpenChange={() => setMovingFile(null)}>
         <DialogContent>
           <DialogHeader>
@@ -545,7 +529,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Alert Eliminar Pasta */}
       <AlertDialog open={!!deletingFolder} onOpenChange={() => setDeletingFolder(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -562,7 +545,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Alert Eliminar Ficheiro */}
       <AlertDialog open={!!deletingFile} onOpenChange={() => setDeletingFile(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

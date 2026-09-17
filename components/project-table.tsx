@@ -2,7 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, Plus, FolderOpen, Check, Send } from 'lucide-react'
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  FolderOpen,
+  Check,
+  Send,
+  Star,
+} from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -13,11 +22,24 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import type { Project, ProjectStatus } from '@/lib/types'
+
+import type {
+  Project,
+  ProjectEvaluation,
+  ProjectStatus,
+} from '@/lib/types'
 import { STATUS_COLORS } from '@/lib/types'
+
 import { ProjectDialog } from './project-dialog'
-import { deleteProject } from '@/app/actions/projects'
+import { ProjectEvaluationDialog } from './project-evaluation-dialog'
+
+import {
+  deleteProject,
+  getProjectEvaluation,
+} from '@/app/actions/projects'
+
 import { getFormularioLink } from '@/lib/google-form'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,12 +59,15 @@ interface ProjectTableProps {
   hideValues?: boolean
 }
 
-// Calcula dias úteis entre duas datas (excluindo sábados e domingos)
-function calculateBusinessDays(startDate: string | null, endDate: string | null): number | null {
+// Calcula dias úteis entre duas datas, excluindo sábados e domingos
+function calculateBusinessDays(
+  startDate: string | null,
+  endDate: string | null
+): number | null {
   if (!startDate || !endDate) return null
 
-  const start = new Date(startDate + 'T00:00:00')
-  const end = new Date(endDate + 'T00:00:00')
+  const start = new Date(`${startDate}T00:00:00`)
+  const end = new Date(`${endDate}T00:00:00`)
 
   if (end < start) return null
 
@@ -51,73 +76,142 @@ function calculateBusinessDays(startDate: string | null, endDate: string | null)
 
   while (current <= end) {
     const dayOfWeek = current.getDay()
+
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       count++
     }
+
     current.setDate(current.getDate() + 1)
   }
 
   return count
 }
 
-// Pequeno selo verde (estilo "expoente", tipo m³) indicando que a Entrada já foi lançada
+// Selo verde indicando que a entrada já foi lançada
 function EntradaBadge() {
   return (
-    <span className="absolute -top-1.5 -right-2.5 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 ring-1 ring-white">
-      <Check className="h-2 w-2 text-white" strokeWidth={3} />
+    <span className="absolute -right-2.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 ring-1 ring-white">
+      <Check
+        className="h-2 w-2 text-white"
+        strokeWidth={3}
+      />
     </span>
   )
 }
 
-export function ProjectTable({ projects, year, month, onRefresh, hideValues = false }: ProjectTableProps) {
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
+export function ProjectTable({
+  projects,
+  year,
+  month,
+  onRefresh,
+  hideValues = false,
+}: ProjectTableProps) {
+  const [editingProject, setEditingProject] =
+    useState<Project | null>(null)
+
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
+
+  const [deletingProject, setDeletingProject] =
+    useState<Project | null>(null)
+
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const [evaluationProject, setEvaluationProject] =
+    useState<Project | null>(null)
+
+  const [selectedEvaluation, setSelectedEvaluation] =
+    useState<ProjectEvaluation | null>(null)
+
+  const [isEvaluationOpen, setIsEvaluationOpen] = useState(false)
+
+  const [isEvaluationLoading, setIsEvaluationLoading] =
+    useState(false)
 
   const formatCurrency = (value: number) => {
     if (hideValues) return 'R$ ••••••'
+
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value)
   }
 
-  // Corrigido para evitar problema de timezone
+  // Formata a data sem problemas de timezone
   const formatDate = (date: string | null) => {
     if (!date) return '-'
-    const [year, month, day] = date.split('-')
-    return `${day}/${month}/${year}`
+
+    const [dateYear, dateMonth, dateDay] = date.split('-')
+
+    return `${dateDay}/${dateMonth}/${dateYear}`
   }
 
-  // Versão curta (sem ano) para a coluna Período, que já convive com o seletor de ano no topo
+  // Formata a data sem exibir o ano
   const formatDateShort = (date: string | null) => {
     if (!date) return '-'
-    const [, month, day] = date.split('-')
-    return `${day}/${month}`
+
+    const [, dateMonth, dateDay] = date.split('-')
+
+    return `${dateDay}/${dateMonth}`
+  }
+
+  const handleViewEvaluation = async (project: Project) => {
+    setEvaluationProject(project)
+    setSelectedEvaluation(null)
+    setIsEvaluationOpen(true)
+    setIsEvaluationLoading(true)
+
+    try {
+      const evaluation = await getProjectEvaluation(project.id)
+      setSelectedEvaluation(evaluation)
+    } catch (error) {
+      console.error('Erro ao carregar avaliação:', error)
+      setSelectedEvaluation(null)
+    } finally {
+      setIsEvaluationLoading(false)
+    }
+  }
+
+  const handleCloseEvaluation = (open: boolean) => {
+    setIsEvaluationOpen(open)
+
+    if (!open) {
+      setEvaluationProject(null)
+      setSelectedEvaluation(null)
+    }
   }
 
   const handleDelete = async () => {
     if (!deletingProject) return
+
     setIsDeleting(true)
+
     try {
       await deleteProject(deletingProject.id)
       onRefresh()
     } catch (error) {
-      console.error('Error deleting project:', error)
+      console.error('Erro ao excluir projeto:', error)
     } finally {
       setIsDeleting(false)
       setDeletingProject(null)
     }
   }
 
-  // Total do Mês agora só considera projetos com andamento === 'ENTREGUE'
+  // Total considera apenas projetos entregues
   const totalValue = projects.reduce(
-    (sum, p) => sum + (p.andamento === 'ENTREGUE' ? Number(p.valor) : 0),
+    (sum, project) =>
+      sum +
+      (project.andamento === 'ENTREGUE'
+        ? Number(project.valor) || 0
+        : 0),
     0
   )
+
   const totalPagamentoFinal = projects.reduce(
-    (sum, p) => sum + (p.andamento === 'ENTREGUE' ? Number(p.pagamento_final_valor) || 0 : 0),
+    (sum, project) =>
+      sum +
+      (project.andamento === 'ENTREGUE'
+        ? Number(project.pagamento_final_valor) || 0
+        : 0),
     0
   )
 
@@ -125,41 +219,24 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">
-          {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
+          {projects.length}{' '}
+          {projects.length === 1 ? 'projeto' : 'projetos'}
         </h2>
-        <Button onClick={() => { setEditingProject(null); setIsDialogOpen(true) }}>
+
+        <Button
+          onClick={() => {
+            setEditingProject(null)
+            setIsDialogOpen(true)
+          }}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Novo Projeto
         </Button>
       </div>
 
-      {/* ===== TABELA — visível apenas no desktop ===== */}
-      <div className="hidden rounded-lg border bg-card overflow-x-auto md:block">
-        <Table className="w-full table-fixed text-[10px]">
-          <colgroup>
-            {/* N */}
-            <col className="w-[3%]" />
-            {/* Marca */}
-            <col className="w-[10%]" />
-            {/* Cidade */}
-            <col className="w-[11%]" />
-            {/* Período (Início → Final) */}
-            <col className="w-[15%]" />
-            {/* Dias Úteis */}
-            <col className="w-[5%]" />
-            {/* Modalidade */}
-            <col className="w-[9%]" />
-            {/* Arquiteto */}
-            <col className="w-[9%]" />
-            {/* Valor */}
-            <col className="w-[10%]" />
-            {/* Pag. Final */}
-            <col className="w-[10%]" />
-            {/* Andamento */}
-            <col className="w-[10%]" />
-            {/* Ações — ficou um pouco mais larga por causa do botão novo */}
-            <col className="w-[8%]" />
-          </colgroup>
+      {/* Tabela visível apenas no desktop */}
+      <div className="hidden overflow-x-auto rounded-lg border bg-card md:block">
+        <Table className="w-auto min-w-full text-[10px]">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="px-2 py-2">N</TableHead>
@@ -167,95 +244,193 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
               <TableHead className="px-2 py-2">Cidade</TableHead>
               <TableHead className="px-2 py-2">Período</TableHead>
               <TableHead className="px-2 py-2">Dias</TableHead>
-              <TableHead className="px-2 py-2">Modalidade</TableHead>
-              <TableHead className="px-2 py-2">Arquiteto</TableHead>
-              <TableHead className="px-2 py-2 text-right">Valor</TableHead>
-              <TableHead className="px-2 py-2 text-right">Pag. Final</TableHead>
-              <TableHead className="px-2 py-2">Andamento</TableHead>
-              <TableHead className="px-2 py-2">Ações</TableHead>
+              <TableHead className="px-2 py-2">
+                Modalidade
+              </TableHead>
+              <TableHead className="px-2 py-2">
+                Arquiteto
+              </TableHead>
+              <TableHead className="px-2 py-2 text-right">
+                Valor
+              </TableHead>
+              <TableHead className="px-2 py-2 text-right">
+                Pag. Final
+              </TableHead>
+              <TableHead className="px-2 py-2">
+                Andamento
+              </TableHead>
+              <TableHead className="px-2 py-2">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {projects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={11}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   Nenhum projeto cadastrado neste mês
                 </TableCell>
               </TableRow>
             ) : (
               projects.map((project, index) => {
-                const businessDays = calculateBusinessDays(project.data_inicio, project.data_final)
+                const businessDays = calculateBusinessDays(
+                  project.data_inicio,
+                  project.data_final
+                )
+
                 return (
                   <TableRow key={project.id}>
-                    <TableCell className="px-2 py-2 font-medium">{index + 1}</TableCell>
-                    <TableCell className="px-2 py-2 truncate" title={project.marca || '-'}>
+                    <TableCell className="px-2 py-2 font-medium">
+                      {index + 1}
+                    </TableCell>
+
+                    <TableCell
+                      className="truncate px-2 py-2"
+                      title={project.marca || '-'}
+                    >
                       {project.marca || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate text-[9px]" title={project.cidade || '-'}>
+
+                    <TableCell
+                      className="truncate px-2 py-2 text-[9px]"
+                      title={project.cidade || '-'}
+                    >
                       {project.cidade || '-'}
                     </TableCell>
+
                     <TableCell
-                      className="px-2 py-2 whitespace-nowrap"
-                      title={`${formatDate(project.data_inicio)} → ${formatDate(project.data_final)}`}
+                      className="whitespace-nowrap px-2 py-2"
+                      title={`${formatDate(
+                        project.data_inicio
+                      )} → ${formatDate(project.data_final)}`}
                     >
-                      {formatDateShort(project.data_inicio)} → {formatDateShort(project.data_final)}
+                      {formatDateShort(project.data_inicio)} →{' '}
+                      {formatDateShort(project.data_final)}
                     </TableCell>
+
                     <TableCell className="px-2 py-2">
                       {businessDays !== null ? (
-                        <span className="font-medium">{businessDays}d</span>
-                      ) : '-'}
+                        <span className="font-medium">
+                          {businessDays}d
+                        </span>
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate" title={project.modalidade || '-'}>
+
+                    <TableCell
+                      className="truncate px-2 py-2"
+                      title={project.modalidade || '-'}
+                    >
                       {project.modalidade || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 truncate" title={project.arquiteto || '-'}>
+
+                    <TableCell
+                      className="truncate px-2 py-2"
+                      title={project.arquiteto || '-'}
+                    >
                       {project.arquiteto || '-'}
                     </TableCell>
-                    <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
+
+                    <TableCell className="whitespace-nowrap px-2 py-2 text-right font-medium">
                       <span className="relative inline-block">
-                        {formatCurrency(Number(project.valor))}
+                        {formatCurrency(
+                          Number(project.valor) || 0
+                        )}
                         {project.entrada_data && <EntradaBadge />}
                       </span>
                     </TableCell>
-                    <TableCell className="px-2 py-2 text-right font-medium whitespace-nowrap">
-                      {project.andamento === 'ENTREGUE' && project.pagamento_final_valor
-                        ? formatCurrency(Number(project.pagamento_final_valor))
-                        : '-'}
+
+                    <TableCell className="whitespace-nowrap px-2 py-2 text-right font-medium">
+                      {project.andamento === 'ENTREGUE' &&
+                      project.pagamento_final_valor ? (
+                        formatCurrency(
+                          Number(project.pagamento_final_valor) || 0
+                        )
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
+
                     <TableCell className="px-2 py-2">
-                      <Badge className={`${STATUS_COLORS[project.andamento as ProjectStatus]} text-[9px] px-1.5 py-0.5 font-medium`}>
+                      <Badge
+                        className={`${
+                          STATUS_COLORS[
+                            project.andamento as ProjectStatus
+                          ]
+                        } px-1.5 py-0.5 text-[9px] font-medium`}
+                      >
                         {project.andamento}
                       </Badge>
                     </TableCell>
+
                     <TableCell className="px-1 py-2">
                       <div className="flex items-center gap-0.5">
-                        <Link href={`/dashboard/projeto/${project.id}`}>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Arquivos e Imagens 3D">
+                        <Link
+                          href={`/dashboard/projeto/${project.id}`}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Arquivos e imagens 3D"
+                          >
                             <FolderOpen className="h-3.5 w-3.5 text-primary" />
                           </Button>
                         </Link>
+
                         <a
                           href={getFormularioLink(project.id)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar formulário">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Enviar formulário"
+                          >
                             <Send className="h-3.5 w-3.5 text-primary" />
                           </Button>
                         </a>
+
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
+                          title="Ver avaliação"
+                          onClick={() =>
+                            handleViewEvaluation(project)
+                          }
+                        >
+                          <Star className="h-3.5 w-3.5 text-yellow-500" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Editar projeto"
+                          onClick={() => {
+                            setEditingProject(project)
+                            setIsDialogOpen(true)
+                          }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
+
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => setDeletingProject(project)}
+                          title="Excluir projeto"
+                          onClick={() =>
+                            setDeletingProject(project)
+                          }
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
@@ -265,17 +440,24 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
                 )
               })
             )}
+
             {projects.length > 0 && (
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell colSpan={7} className="px-2 py-2 text-right">
+                <TableCell
+                  colSpan={7}
+                  className="px-2 py-2 text-right"
+                >
                   Total do Mês:
                 </TableCell>
+
                 <TableCell className="px-2 py-2 text-right">
                   {formatCurrency(totalValue)}
                 </TableCell>
+
                 <TableCell className="px-2 py-2 text-right">
                   {formatCurrency(totalPagamentoFinal)}
                 </TableCell>
+
                 <TableCell colSpan={2} />
               </TableRow>
             )}
@@ -283,7 +465,7 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
         </Table>
       </div>
 
-      {/* ===== CARDS — visível apenas no mobile ===== */}
+      {/* Cards visíveis apenas no mobile */}
       <div className="space-y-3 md:hidden">
         {projects.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
@@ -292,89 +474,181 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
         ) : (
           <>
             {projects.map((project, index) => {
-              const businessDays = calculateBusinessDays(project.data_inicio, project.data_final)
+              const businessDays = calculateBusinessDays(
+                project.data_inicio,
+                project.data_final
+              )
+
               return (
-                <div key={project.id} className="rounded-lg border bg-card p-4 space-y-3">
+                <div
+                  key={project.id}
+                  className="space-y-3 rounded-lg border bg-card p-4"
+                >
                   {/* Cabeçalho do card */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs text-muted-foreground">#{index + 1}</p>
-                      <h3 className="font-semibold text-foreground">{project.marca || '-'}</h3>
-                      <p className="text-sm text-muted-foreground">{project.cidade || '-'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        #{index + 1}
+                      </p>
+
+                      <h3 className="font-semibold text-foreground">
+                        {project.marca || '-'}
+                      </h3>
+
+                      <p className="text-sm text-muted-foreground">
+                        {project.cidade || '-'}
+                      </p>
                     </div>
-                    <Badge className={STATUS_COLORS[project.andamento as ProjectStatus]}>
+
+                    <Badge
+                      className={
+                        STATUS_COLORS[
+                          project.andamento as ProjectStatus
+                        ]
+                      }
+                    >
                       {project.andamento}
                     </Badge>
                   </div>
 
-                  {/* Grid de informações */}
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm border-t pt-3">
+                  {/* Informações do projeto */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t pt-3 text-sm">
                     <div>
-                      <p className="text-xs text-muted-foreground">Início</p>
-                      <p className="font-medium">{formatDate(project.data_inicio)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Final</p>
-                      <p className="font-medium">{formatDate(project.data_final)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Dias Úteis</p>
+                      <p className="text-xs text-muted-foreground">
+                        Início
+                      </p>
                       <p className="font-medium">
-                        {businessDays !== null ? `${businessDays} dias` : '-'}
+                        {formatDate(project.data_inicio)}
                       </p>
                     </div>
+
                     <div>
-                      <p className="text-xs text-muted-foreground">Modalidade</p>
-                      <p className="font-medium">{project.modalidade || '-'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Final
+                      </p>
+                      <p className="font-medium">
+                        {formatDate(project.data_final)}
+                      </p>
                     </div>
+
                     <div>
-                      <p className="text-xs text-muted-foreground">Arquiteto</p>
-                      <p className="font-medium">{project.arquiteto || '-'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Dias Úteis
+                      </p>
+                      <p className="font-medium">
+                        {businessDays !== null
+                          ? `${businessDays} dias`
+                          : '-'}
+                      </p>
                     </div>
+
                     <div>
-                      <p className="text-xs text-muted-foreground">Valor</p>
-                      <p className="font-medium relative inline-block">
-                        {formatCurrency(Number(project.valor))}
+                      <p className="text-xs text-muted-foreground">
+                        Modalidade
+                      </p>
+                      <p className="font-medium">
+                        {project.modalidade || '-'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Arquiteto
+                      </p>
+                      <p className="font-medium">
+                        {project.arquiteto || '-'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Valor
+                      </p>
+
+                      <p className="relative inline-block font-medium">
+                        {formatCurrency(
+                          Number(project.valor) || 0
+                        )}
                         {project.entrada_data && <EntradaBadge />}
                       </p>
                     </div>
-                    {project.andamento === 'ENTREGUE' && project.pagamento_final_valor && (
-                      <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground">Pag. Final</p>
-                        <p className="font-medium">
-                          {formatCurrency(Number(project.pagamento_final_valor))}
-                        </p>
-                      </div>
-                    )}
+
+                    {project.andamento === 'ENTREGUE' &&
+                      project.pagamento_final_valor && (
+                        <div className="col-span-2">
+                          <p className="text-xs text-muted-foreground">
+                            Pag. Final
+                          </p>
+
+                          <p className="font-medium">
+                            {formatCurrency(
+                              Number(
+                                project.pagamento_final_valor
+                              ) || 0
+                            )}
+                          </p>
+                        </div>
+                      )}
                   </div>
 
                   {/* Ações */}
                   <div className="flex items-center justify-end gap-1 border-t pt-3">
-                    <Link href={`/dashboard/projeto/${project.id}`}>
-                      <Button variant="ghost" size="icon" title="Arquivos e Imagens 3D">
+                    <Link
+                      href={`/dashboard/projeto/${project.id}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Arquivos e imagens 3D"
+                      >
                         <FolderOpen className="h-4 w-4 text-primary" />
                       </Button>
                     </Link>
+
                     <a
                       href={getFormularioLink(project.id)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Button variant="ghost" size="icon" title="Enviar formulário">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Enviar formulário"
+                      >
                         <Send className="h-4 w-4 text-primary" />
                       </Button>
                     </a>
+
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => { setEditingProject(project); setIsDialogOpen(true) }}
+                      title="Ver avaliação"
+                      onClick={() =>
+                        handleViewEvaluation(project)
+                      }
+                    >
+                      <Star className="h-4 w-4 text-yellow-500" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Editar projeto"
+                      onClick={() => {
+                        setEditingProject(project)
+                        setIsDialogOpen(true)
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
+
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDeletingProject(project)}
+                      title="Excluir projeto"
+                      onClick={() =>
+                        setDeletingProject(project)
+                      }
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -384,14 +658,17 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
             })}
 
             {/* Total do mês no mobile */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-1">
+            <div className="space-y-1 rounded-lg border bg-muted/30 p-4">
               <div className="flex justify-between text-sm font-semibold">
                 <span>Total do Mês:</span>
                 <span>{formatCurrency(totalValue)}</span>
               </div>
+
               <div className="flex justify-between text-sm font-semibold">
                 <span>Pag. Final:</span>
-                <span>{formatCurrency(totalPagamentoFinal)}</span>
+                <span>
+                  {formatCurrency(totalPagamentoFinal)}
+                </span>
               </div>
             </div>
           </>
@@ -411,18 +688,43 @@ export function ProjectTable({ projects, year, month, onRefresh, hideValues = fa
         }}
       />
 
-      <AlertDialog open={!!deletingProject} onOpenChange={() => setDeletingProject(null)}>
+      <ProjectEvaluationDialog
+        project={evaluationProject}
+        evaluation={selectedEvaluation}
+        loading={isEvaluationLoading}
+        open={isEvaluationOpen}
+        onOpenChange={handleCloseEvaluation}
+      />
+
+      <AlertDialog
+        open={!!deletingProject}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingProject(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>
+              Confirmar exclusão
+            </AlertDialogTitle>
+
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o projeto &quot;{deletingProject?.marca}&quot;? 
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o projeto "
+              {deletingProject?.marca}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
               {isDeleting ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>

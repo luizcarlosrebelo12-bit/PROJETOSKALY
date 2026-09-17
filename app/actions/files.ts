@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { del } from '@vercel/blob'
+import { del, put } from '@vercel/blob'
 
 /* ============ PASTAS ============ */
 
@@ -66,8 +66,6 @@ export async function deleteFolder(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
-  // Remove os blobs dos arquivos e imagens dentro da pasta (e subpastas via cascade no DB,
-  // mas precisamos limpar os blobs). Buscamos os pathnames primeiro.
   const { data: files } = await supabase
     .from('files')
     .select('pathname')
@@ -130,6 +128,26 @@ export async function getFiles(projectId: string, folderId: string | null) {
     return []
   }
   return data || []
+}
+
+/**
+ * Faz o upload real do ficheiro para o Vercel Blob e devolve a URL pública.
+ * Deve ser chamado ANTES de saveFileMetadata, passando a URL retornada como pathname.
+ */
+export async function uploadFile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const file = formData.get('file') as File | null
+  if (!file) throw new Error('Nenhum ficheiro enviado')
+
+  const blob = await put(file.name, file, {
+    access: 'public',
+    addRandomSuffix: true,
+  })
+
+  return { url: blob.url }
 }
 
 export async function saveFileMetadata(params: {
@@ -288,8 +306,6 @@ export async function getImageFolders(projectId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // Reaproveita a tabela folders. Diferenciamos galeria por prefixo no nome? 
-  // Não — usamos a mesma estrutura de pastas, mas imagens podem ir em qualquer pasta.
   const { data, error } = await supabase
     .from('folders')
     .select('*')
@@ -311,8 +327,6 @@ export async function getAllProjectFiles(year: number) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // !inner garante que o filtro em projects.year realmente restrinja as linhas
-  // retornadas (sem !inner, o Supabase só filtraria o objeto embutido, não a linha).
   const { data, error } = await supabase
     .from('files')
     .select('*, projects!inner(marca, cidade, year, month)')
