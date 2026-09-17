@@ -12,14 +12,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { project_id?: string; answers?: Record<string, unknown>; submitted_at?: string }
+  let body: {
+    project_id?: string
+    answers?: Record<string, unknown>
+    submitted_at?: string
+    respondent_email?: string
+  }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { project_id, answers, submitted_at } = body
+  const { project_id, answers, submitted_at, respondent_email } = body
 
   if (!project_id || !answers) {
     return NextResponse.json(
@@ -45,15 +50,25 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Grava a resposta vinculada ao projeto
-  const { error: insertError } = await supabase.from('form_responses').insert({
-    project_id: project.id,
-    user_id: project.user_id,
-    answers,
-    submitted_at: submitted_at ?? new Date().toISOString(),
-  })
+  // IMPORTANTE: a tabela é `project_evaluations` — é dela que
+  // getProjectEvaluation() lê (veja app/actions/projects.ts).
+  // Antes estava gravando em `form_responses`, uma tabela que
+  // nada mais no app lê, por isso as avaliações "sumiam".
+  const { error: upsertError } = await supabase
+    .from('project_evaluations')
+    .upsert(
+      {
+        project_id: project.id,
+        user_id: project.user_id,
+        answers,
+        respondent_email: respondent_email ?? null,
+        submitted_at: submitted_at ?? new Date().toISOString(),
+      },
+      { onConflict: 'project_id' }
+    )
 
-  if (insertError) {
-    console.error('Error inserting form response:', insertError)
+  if (upsertError) {
+    console.error('Error inserting project evaluation:', upsertError)
     return NextResponse.json({ error: 'Erro ao gravar resposta' }, { status: 500 })
   }
 
