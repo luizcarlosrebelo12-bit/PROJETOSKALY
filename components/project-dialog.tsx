@@ -45,6 +45,7 @@ const emptyForm: ProjectFormData = {
   entrada_data: null,
   entrada_obs: null,
   entrada_origem: 'EIXO',
+  entrada_sem: false,
   pagamento_final_valor: null,
   pagamento_final_data: null,
   pagamento_final_obs: null,
@@ -109,6 +110,7 @@ export function ProjectDialog({
         entrada_data: project.entrada_data || null,
         entrada_obs: project.entrada_obs || null,
         entrada_origem: project.entrada_origem || 'EIXO',
+        entrada_sem: project.entrada_sem ?? false,
         pagamento_final_valor: project.pagamento_final_valor != null ? Number(project.pagamento_final_valor) : null,
         pagamento_final_data: project.pagamento_final_data || null,
         pagamento_final_obs: project.pagamento_final_obs || null,
@@ -144,20 +146,24 @@ export function ProjectDialog({
   // e cancela uma eventual confirmação já dada pra um valor anterior.
   useEffect(() => {
     setEntradaConfirmada(false)
-    if (formData.entrada_valor != null && formData.entrada_valor > 0) {
+    if (
+      !formData.entrada_sem &&
+      formData.entrada_valor != null &&
+      formData.entrada_valor > 0
+    ) {
       setEntradaWarning(getEntradaDeviationWarning(formData.entrada_valor, entradaHistorico))
     } else {
       setEntradaWarning(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.entrada_valor, entradaHistorico])
+  }, [formData.entrada_valor, formData.entrada_sem, entradaHistorico])
 
   // Sempre que valor ou data da entrada mudam, revalida se a data é obrigatória
   useEffect(() => {
     const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
     const temData = !!formData.entrada_data
-    setEntradaDataError(temValor && !temData)
-  }, [formData.entrada_valor, formData.entrada_data])
+    setEntradaDataError(!formData.entrada_sem && temValor && !temData)
+  }, [formData.entrada_valor, formData.entrada_data, formData.entrada_sem])
 
   const isEntregue = formData.andamento === 'ENTREGUE'
 
@@ -183,7 +189,7 @@ export function ProjectDialog({
     // Entrada com valor mas sem data — não deixa salvar
     const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
     const temData = !!formData.entrada_data
-    if (temValor && !temData) {
+    if (!formData.entrada_sem && temValor && !temData) {
       setEntradaDataError(true)
       return
     }
@@ -201,13 +207,26 @@ export function ProjectDialog({
     // Mesmo confirmando o valor destoante, a data continua obrigatória
     const temValor = formData.entrada_valor != null && formData.entrada_valor > 0
     const temData = !!formData.entrada_data
-    if (temValor && !temData) {
+    if (!formData.entrada_sem && temValor && !temData) {
       setEntradaDataError(true)
       return
     }
 
     setEntradaConfirmada(true)
     await saveProject()
+  }
+
+  const handleToggleSemEntrada = (checked: boolean) => {
+    setFormData({
+      ...formData,
+      entrada_sem: checked,
+      // ao marcar "não tem entrada", limpa o que tinha sido lançado
+      ...(checked && {
+        entrada_valor: null,
+        entrada_data: null,
+        entrada_obs: null,
+      }),
+    })
   }
 
   return (
@@ -324,6 +343,18 @@ export function ProjectDialog({
                 Valor que caiu na conta como entrada do projeto
               </span>
             </div>
+
+            {/* Marca que a informação já foi conferida e o projeto não tem entrada */}
+            <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={formData.entrada_sem}
+                onChange={(e) => handleToggleSemEntrada(e.target.checked)}
+              />
+              NÃO TEM entrada
+            </label>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="entrada_valor">Valor da Entrada (R$)</Label>
@@ -332,6 +363,7 @@ export function ProjectDialog({
                   type="number"
                   step="0.01"
                   min="0"
+                  disabled={formData.entrada_sem}
                   value={formData.entrada_valor ?? ''}
                   onChange={(e) =>
                     setFormData({
@@ -345,13 +377,16 @@ export function ProjectDialog({
               <div className="space-y-2">
                 <Label htmlFor="entrada_data">
                   Data da Entrada
-                  {formData.entrada_valor != null && formData.entrada_valor > 0 && (
-                    <span className="ml-0.5 text-destructive">*</span>
-                  )}
+                  {!formData.entrada_sem &&
+                    formData.entrada_valor != null &&
+                    formData.entrada_valor > 0 && (
+                      <span className="ml-0.5 text-destructive">*</span>
+                    )}
                 </Label>
                 <Input
                   id="entrada_data"
                   type="date"
+                  disabled={formData.entrada_sem}
                   value={formData.entrada_data ?? ''}
                   onChange={(e) =>
                     setFormData({ ...formData, entrada_data: e.target.value || null })
@@ -371,6 +406,7 @@ export function ProjectDialog({
               <Label htmlFor="entrada_origem">Origem da Entrada</Label>
               <Select
                 value={formData.entrada_origem}
+                disabled={formData.entrada_sem}
                 onValueChange={(value: EntradaOrigem) =>
                   setFormData({ ...formData, entrada_origem: value })
                 }
@@ -392,6 +428,7 @@ export function ProjectDialog({
               <Label htmlFor="entrada_obs">Observações</Label>
               <Textarea
                 id="entrada_obs"
+                disabled={formData.entrada_sem}
                 value={formData.entrada_obs ?? ''}
                 onChange={(e) =>
                   setFormData({ ...formData, entrada_obs: e.target.value || null })

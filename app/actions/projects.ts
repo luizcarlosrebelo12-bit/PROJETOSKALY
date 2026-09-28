@@ -97,6 +97,8 @@ export async function createProject(year: number, month: number, formData: Proje
   if (!user) throw new Error('Não autenticado')
 
   const isEntregue = formData.andamento === 'ENTREGUE'
+  // Se marcou "NÃO TEM entrada", garante que valor/data/obs ficam vazios
+  const semEntrada = !!formData.entrada_sem
 
   const { data, error } = await supabase
     .from('projects')
@@ -112,10 +114,11 @@ export async function createProject(year: number, month: number, formData: Proje
       arquiteto: formData.arquiteto,
       valor: formData.valor,
       andamento: formData.andamento,
-      entrada_valor: formData.entrada_valor,
-      entrada_data: formData.entrada_data || null,
-      entrada_obs: formData.entrada_obs,
+      entrada_valor: semEntrada ? null : formData.entrada_valor,
+      entrada_data: semEntrada ? null : (formData.entrada_data || null),
+      entrada_obs: semEntrada ? null : formData.entrada_obs,
       entrada_origem: formData.entrada_origem || 'EIXO',
+      entrada_sem: semEntrada,
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -149,6 +152,8 @@ export async function updateProject(id: string, formData: ProjectFormData) {
   if (!user) throw new Error('Não autenticado')
 
   const isEntregue = formData.andamento === 'ENTREGUE'
+  // Se marcou "NÃO TEM entrada", garante que valor/data/obs ficam vazios
+  const semEntrada = !!formData.entrada_sem
 
   const { error } = await supabase
     .from('projects')
@@ -161,10 +166,11 @@ export async function updateProject(id: string, formData: ProjectFormData) {
       arquiteto: formData.arquiteto,
       valor: formData.valor,
       andamento: formData.andamento,
-      entrada_valor: formData.entrada_valor,
-      entrada_data: formData.entrada_data || null,
-      entrada_obs: formData.entrada_obs,
+      entrada_valor: semEntrada ? null : formData.entrada_valor,
+      entrada_data: semEntrada ? null : (formData.entrada_data || null),
+      entrada_obs: semEntrada ? null : formData.entrada_obs,
       entrada_origem: formData.entrada_origem || 'EIXO',
+      entrada_sem: semEntrada,
       pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
       pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
       pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
@@ -541,9 +547,9 @@ export async function getEntradasRaw(year: number) {
 }
 
 // Retorna os meses (do ano/mês do PROJETO, não da entrada) que têm pelo
-// menos um projeto sem ENTRADA_DATA lançada ainda — mesmo critério usado
-// no selo verde da tabela (EntradaBadge em project-table.tsx), pra ficar
-// 100% consistente com o que o usuário já vê linha a linha.
+// menos um projeto com a entrada ainda NÃO informada — ou seja, sem
+// ENTRADA_DATA lançada e sem o "NÃO TEM entrada" marcado. Mesmo critério
+// dos selos da tabela (verde = entrada lançada, cinza = sem entrada).
 // Usado pra acender o sininho de alerta no Resumo Anual.
 export async function getMesesComEntradaFaltando(year: number): Promise<number[]> {
   const supabase = await createClient()
@@ -553,7 +559,7 @@ export async function getMesesComEntradaFaltando(year: number): Promise<number[]
 
   const { data, error } = await supabase
     .from('projects')
-    .select('month, entrada_data')
+    .select('month, entrada_data, entrada_sem')
     .eq('user_id', user.id)
     .eq('year', year)
     .eq('is_evaluation', false)
@@ -565,7 +571,7 @@ export async function getMesesComEntradaFaltando(year: number): Promise<number[]
 
   const meses = new Set<number>()
   data?.forEach((p) => {
-    if (!p.entrada_data) {
+    if (!p.entrada_data && !p.entrada_sem) {
       meses.add(p.month)
     }
   })

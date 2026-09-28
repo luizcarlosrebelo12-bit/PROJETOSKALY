@@ -8,6 +8,7 @@ import {
   Plus,
   FolderOpen,
   Check,
+  Minus,
   Send,
   Star,
 } from 'lucide-react'
@@ -90,8 +91,26 @@ function calculateBusinessDays(
 // Selo verde indicando que a entrada já foi lançada
 function EntradaBadge() {
   return (
-    <span className="absolute -right-2.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 ring-1 ring-white">
+    <span
+      title="Entrada lançada"
+      className="absolute -right-2.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-green-500 ring-1 ring-white"
+    >
       <Check
+        className="h-2 w-2 text-white"
+        strokeWidth={3}
+      />
+    </span>
+  )
+}
+
+// Selo cinza indicando que o projeto NÃO TEM entrada (informação já preenchida)
+function SemEntradaBadge() {
+  return (
+    <span
+      title="Sem entrada"
+      className="absolute -right-2.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-slate-400 ring-1 ring-white"
+    >
+      <Minus
         className="h-2 w-2 text-white"
         strokeWidth={3}
       />
@@ -342,6 +361,9 @@ export function ProjectTable({
                           Number(project.valor) || 0
                         )}
                         {project.entrada_data && <EntradaBadge />}
+                        {!project.entrada_data && project.entrada_sem && (
+                          <SemEntradaBadge />
+                        )}
                       </span>
                     </TableCell>
 
@@ -570,6 +592,9 @@ export function ProjectTable({
                           Number(project.valor) || 0
                         )}
                         {project.entrada_data && <EntradaBadge />}
+                        {!project.entrada_data && project.entrada_sem && (
+                          <SemEntradaBadge />
+                        )}
                       </p>
                     </div>
 

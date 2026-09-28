@@ -36,6 +36,8 @@ export interface Project {
   entrada_data: string | null
   entrada_obs: string | null
   entrada_origem: EntradaOrigem | null
+  // true = usuário confirmou que esse projeto NÃO TEM entrada
+  entrada_sem: boolean
 
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
@@ -70,6 +72,7 @@ export interface ProjectFormData {
   entrada_data: string | null
   entrada_obs: string | null
   entrada_origem: EntradaOrigem
+  entrada_sem: boolean
 
   pagamento_final_valor: number | null
   pagamento_final_data: string | null
