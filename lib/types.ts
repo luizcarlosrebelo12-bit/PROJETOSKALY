@@ -199,3 +199,15 @@ export const COLOR_PALETTE = [
 
 export const DOC_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip']
 export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+
+// Cole no final de lib/types.ts
+
+export interface DailyTask {
+  id: string
+  user_id: string
+  task_date: string // "YYYY-MM-DD"
+  text: string
+  architect: string
+  done: boolean
+  created_at: string
+}

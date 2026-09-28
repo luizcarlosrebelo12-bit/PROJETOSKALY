@@ -7,6 +7,7 @@ import { YearSummary } from '@/components/year-summary'
 import { StatusChart } from '@/components/status-chart'
 import { ArchitectChart } from '@/components/architect-chart'
 import { EntradaChart } from '@/components/entrada-chart'
+import { DailyTasksDialog } from '@/components/daily-tasks-dialog'
 import { Button } from '@/components/ui/button'
 import {
   getProjects,
@@ -86,6 +87,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Ícone de tarefas do dia (abre a janela com o checklist) */}
+            <DailyTasksDialog />
+
             <div className="flex items-center gap-1 rounded-lg border bg-background px-1 py-1">
               <Button
                 variant="ghost"
