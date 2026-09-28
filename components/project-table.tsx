@@ -146,6 +146,9 @@ export function ProjectTable({
   const [isEvaluationLoading, setIsEvaluationLoading] =
     useState(false)
 
+  // Controla o feedback visual (ícone de check) do botão de copiar link
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
   const formatCurrency = (value: number) => {
     if (hideValues) return 'R$ ••••••'
 
@@ -196,6 +199,17 @@ export function ProjectTable({
     if (!open) {
       setEvaluationProject(null)
       setSelectedEvaluation(null)
+    }
+  }
+
+  // Copia o link do formulário de avaliação pro clipboard, sem abrir aba nova
+  const handleCopyLink = async (projectId: string) => {
+    try {
+      await navigator.clipboard.writeText(getFormularioLink(projectId))
+      setCopiedId(projectId)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      console.error('Erro ao copiar link do formulário:', error)
     }
   }
 
@@ -405,20 +419,23 @@ export function ProjectTable({
                           </Button>
                         </Link>
 
-                        <a
-                          href={getFormularioLink(project.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title={
+                            copiedId === project.id
+                              ? 'Link copiado!'
+                              : 'Copiar link do formulário'
+                          }
+                          onClick={() => handleCopyLink(project.id)}
                         >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Enviar formulário"
-                          >
+                          {copiedId === project.id ? (
+                            <Check className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
                             <Send className="h-3.5 w-3.5 text-primary" />
-                          </Button>
-                        </a>
+                          )}
+                        </Button>
 
                         <Button
                           variant="ghost"
@@ -630,19 +647,22 @@ export function ProjectTable({
                       </Button>
                     </Link>
 
-                    <a
-                      href={getFormularioLink(project.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title={
+                        copiedId === project.id
+                          ? 'Link copiado!'
+                          : 'Copiar link do formulário'
+                      }
+                      onClick={() => handleCopyLink(project.id)}
                     >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Enviar formulário"
-                      >
+                      {copiedId === project.id ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
                         <Send className="h-4 w-4 text-primary" />
-                      </Button>
-                    </a>
+                      )}
+                    </Button>
 
                     <Button
                       variant="ghost"
