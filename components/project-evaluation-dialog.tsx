@@ -20,7 +20,7 @@ interface ProjectEvaluationDialogProps {
 
 // Perguntas abertas nunca viram estrela, mesmo que a resposta seja um número.
 const OPEN_QUESTION_REGEX =
-  /existe algum|melhorar|sugest|coment|observa|elogio|cr[ií]tic/i
+    /sugest|coment|observa|elogio|cr[ií]tic|depoimento/i
 
 function formatAnswer(value: unknown): string {
   if (value === null || value === undefined || value === '') {
