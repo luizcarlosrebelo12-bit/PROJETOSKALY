@@ -1,9 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { del, put } from '@vercel/blob'
+import { del } from '@vercel/blob'
 
-/* ============ PASTAS ============ */
+/* =========================================================
+   PASTAS
+   ========================================================= */
 
 export async function getFolders(projectId: string) {
   const supabase = await createClient()
@@ -41,7 +43,9 @@ export async function createFolder(
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
   const { error } = await supabase.from('folders').insert({
     user_id: user.id,
@@ -64,7 +68,9 @@ export async function renameFolder(id: string, nome: string) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
   const { error } = await supabase
     .from('folders')
@@ -85,14 +91,22 @@ export async function deleteFolder(id: string) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
+  /*
+   * Busca arquivos da pasta
+   */
   const { data: files } = await supabase
     .from('files')
     .select('pathname')
     .eq('user_id', user.id)
     .eq('folder_id', id)
 
+  /*
+   * Busca imagens 3D da pasta
+   */
   const { data: images } = await supabase
     .from('images_3d')
     .select('pathname')
@@ -100,15 +114,22 @@ export async function deleteFolder(id: string) {
     .eq('folder_id', id)
 
   const pathnames = [
-    ...(files || []).map((f) => f.pathname),
-    ...(images || []).map((i) => i.pathname),
-  ]
+    ...(files || []).map((file) => file.pathname),
+    ...(images || []).map((image) => image.pathname),
+  ].filter(Boolean)
 
+  /*
+   * Exclui os objetos do Blob.
+   */
   if (pathnames.length > 0) {
     try {
       await del(pathnames)
-    } catch (e) {
-      console.error('Error deleting blobs:', e)
+    } catch (error) {
+      /*
+       * Se algum arquivo antigo não existir no Blob,
+       * não impede a exclusão da pasta no Supabase.
+       */
+      console.error('Error deleting blobs:', error)
     }
   }
 
@@ -124,7 +145,9 @@ export async function deleteFolder(id: string) {
   }
 }
 
-/* ============ ARQUIVOS ============ */
+/* =========================================================
+   ARQUIVOS
+   ========================================================= */
 
 export async function getFiles(
   projectId: string,
@@ -150,9 +173,10 @@ export async function getFiles(
     query = query.eq('folder_id', folderId)
   }
 
-  const { data, error } = await query.order('data_upload', {
-    ascending: false,
-  })
+  const { data, error } = await query.order(
+    'data_upload',
+    { ascending: false }
+  )
 
   if (error) {
     console.error('Error fetching files:', error)
@@ -162,34 +186,28 @@ export async function getFiles(
   return data || []
 }
 
-/**
- * Faz o upload real do ficheiro para o Vercel Blob
- * e devolve a URL pública.
+/*
+ * IMPORTANTE:
+ *
+ * O upload NÃO é mais feito aqui.
+ *
+ * Agora:
+ *
+ * navegador
+ *    ↓
+ * @vercel/blob/client
+ *    ↓
+ * /api/upload
+ *    ↓
+ * Vercel Blob
+ *
+ * Depois que o Blob retorna a URL,
+ * o FilesManager chama saveFileMetadata().
  */
-export async function uploadFile(formData: FormData) {
-  const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) throw new Error('Não autenticado')
-
-  const file = formData.get('file') as File | null
-
-  if (!file) {
-    throw new Error('Nenhum ficheiro enviado')
-  }
-
-  const blob = await put(file.name, file, {
-    access: 'public',
-    addRandomSuffix: true,
-  })
-
-  return {
-    url: blob.url,
-  }
-}
+/* =========================================================
+   SALVAR METADATA
+   ========================================================= */
 
 export async function saveFileMetadata(params: {
   projectId: string
@@ -207,7 +225,9 @@ export async function saveFileMetadata(params: {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
   const { error } = await supabase.from('files').insert({
     user_id: user.id,
@@ -227,6 +247,10 @@ export async function saveFileMetadata(params: {
   }
 }
 
+/* =========================================================
+   MOVER ARQUIVO
+   ========================================================= */
+
 export async function moveFile(
   id: string,
   folderId: string | null
@@ -234,10 +258,12 @@ export async function moveFile(
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
   const { error } = await supabase
     .from('files')
@@ -253,6 +279,10 @@ export async function moveFile(
   }
 }
 
+/* =========================================================
+   EXCLUIR ARQUIVO
+   ========================================================= */
+
 export async function deleteFile(
   id: string,
   pathname: string
@@ -263,12 +293,23 @@ export async function deleteFile(
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
-  try {
-    await del(pathname)
-  } catch (e) {
-    console.error('Error deleting blob:', e)
+  /*
+   * Tenta excluir do Blob.
+   *
+   * Arquivos antigos /uploads/... podem não existir
+   * no Blob. Nesse caso, seguimos para excluir o
+   * registro do Supabase.
+   */
+  if (pathname) {
+    try {
+      await del(pathname)
+    } catch (error) {
+      console.error('Error deleting blob:', error)
+    }
   }
 
   const { error } = await supabase
@@ -283,7 +324,9 @@ export async function deleteFile(
   }
 }
 
-/* ============ IMAGENS 3D ============ */
+/* =========================================================
+   IMAGENS 3D
+   ========================================================= */
 
 export async function getImages(
   projectId: string,
@@ -292,7 +335,7 @@ export async function getImages(
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) return []
@@ -309,9 +352,10 @@ export async function getImages(
     query = query.eq('folder_id', folderId)
   }
 
-  const { data, error } = await query.order('created_at', {
-    ascending: false,
-  })
+  const { data, error } = await query.order(
+    'created_at',
+    { ascending: false }
+  )
 
   if (error) {
     console.error('Error fetching images:', error)
@@ -320,6 +364,10 @@ export async function getImages(
 
   return data || []
 }
+
+/* =========================================================
+   SALVAR IMAGEM 3D
+   ========================================================= */
 
 export async function saveImageMetadata(params: {
   projectId: string
@@ -331,10 +379,12 @@ export async function saveImageMetadata(params: {
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
   const { error } = await supabase.from('images_3d').insert({
     user_id: user.id,
@@ -351,6 +401,10 @@ export async function saveImageMetadata(params: {
   }
 }
 
+/* =========================================================
+   EXCLUIR IMAGEM 3D
+   ========================================================= */
+
 export async function deleteImage(
   id: string,
   pathname: string
@@ -358,15 +412,19 @@ export async function deleteImage(
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Não autenticado')
+  if (!user) {
+    throw new Error('Não autenticado')
+  }
 
-  try {
-    await del(pathname)
-  } catch (e) {
-    console.error('Error deleting blob:', e)
+  if (pathname) {
+    try {
+      await del(pathname)
+    } catch (error) {
+      console.error('Error deleting blob:', error)
+    }
   }
 
   const { error } = await supabase
@@ -381,13 +439,15 @@ export async function deleteImage(
   }
 }
 
-/* ============ IMAGE FOLDERS (galeria) ============ */
+/* =========================================================
+   PASTAS DE IMAGENS / GALERIA
+   ========================================================= */
 
 export async function getImageFolders(projectId: string) {
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) return []
@@ -397,9 +457,7 @@ export async function getImageFolders(projectId: string) {
     .select('*')
     .eq('user_id', user.id)
     .eq('project_id', projectId)
-    .order('created_at', {
-      ascending: true,
-    })
+    .order('created_at', { ascending: true })
 
   if (error) {
     console.error('Error fetching image folders:', error)
@@ -409,13 +467,15 @@ export async function getImageFolders(projectId: string) {
   return data || []
 }
 
-/* ============ DRIVERS ============ */
+/* =========================================================
+   DRIVERS
+   ========================================================= */
 
 export async function getAllProjectFiles(year: number) {
   const supabase = await createClient()
 
   const {
-    data: { user } = {},
+    data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) return []
@@ -427,9 +487,7 @@ export async function getAllProjectFiles(year: number) {
     )
     .eq('user_id', user.id)
     .eq('projects.year', year)
-    .order('data_upload', {
-      ascending: false,
-    })
+    .order('data_upload', { ascending: false })
 
   if (error) {
     console.error('Error fetching project files:', error)
