@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const pathname = request.nextUrl.searchParams.get('pathname')
-    const download = request.nextUrl.searchParams.get('download')
+    const pathname =
+      request.nextUrl.searchParams.get('pathname')
+
+    const download =
+      request.nextUrl.searchParams.get('download')
 
     if (!pathname) {
       return NextResponse.json(
@@ -27,7 +30,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Os arquivos atuais estão armazenados como PUBLIC no Vercel Blob.
+    /*
+     * Os arquivos atuais são enviados para o Vercel Blob
+     * com access: 'public'.
+     *
+     * Por isso o get() também utiliza access: 'public'.
+     */
     const result = await get(pathname, {
       access: 'public',
       ifNoneMatch:
@@ -40,7 +48,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Arquivo não sofreu alteração desde a última requisição.
+    /*
+     * Caso o navegador já possua a versão mais recente.
+     */
     if (result.statusCode === 304) {
       return new NextResponse(null, {
         status: 304,
@@ -53,19 +63,33 @@ export async function GET(request: NextRequest) {
 
     const headers: Record<string, string> = {
       'Content-Type':
-        result.blob.contentType || 'application/octet-stream',
+        result.blob.contentType ||
+        'application/octet-stream',
 
       ETag: result.blob.etag,
 
       'Cache-Control': 'private, no-cache',
     }
 
-    // Força o download quando ?download=1 estiver presente.
+    /*
+     * ?download=1 força o download.
+     */
     if (download) {
       const filename =
         pathname.split('/').pop() || 'arquivo'
 
-      // Fallback para nomes com caracteres especiais.
+      /*
+       * Fallback ASCII para nomes com caracteres especiais.
+       *
+       * Exemplo:
+       * JUNDIAÍ.pdf
+       *
+       * filename:
+       * JUNDIA_.pdf
+       *
+       * filename*:
+       * mantém o nome original em UTF-8.
+       */
       const asciiName = filename
         .replace(/[^\x20-\x7E]/g, '_')
         .replace(/"/g, '')
@@ -81,8 +105,12 @@ export async function GET(request: NextRequest) {
     console.error('Error serving file:', error)
 
     return NextResponse.json(
-      { error: 'Failed to serve file' },
-      { status: 500 }
+      {
+        error: 'Failed to serve file',
+      },
+      {
+        status: 500,
+      }
     )
   }
 }
