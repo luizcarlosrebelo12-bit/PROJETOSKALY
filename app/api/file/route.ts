@@ -17,11 +17,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const pathname =
-      request.nextUrl.searchParams.get('pathname')
-
-    const download =
-      request.nextUrl.searchParams.get('download')
+    const pathname = request.nextUrl.searchParams.get('pathname')
+    const download = request.nextUrl.searchParams.get('download')
 
     if (!pathname) {
       return NextResponse.json(
@@ -31,10 +28,10 @@ export async function GET(request: NextRequest) {
     }
 
     /*
-     * Os arquivos atuais são enviados para o Vercel Blob
-     * com access: 'public'.
+     * Os arquivos atuais estão no Vercel Blob como PUBLIC.
      *
-     * Por isso o get() também utiliza access: 'public'.
+     * O get() aceita tanto pathname quanto URL completa.
+     * Aqui usamos exatamente o valor salvo no banco.
      */
     const result = await get(pathname, {
       access: 'public',
@@ -42,14 +39,17 @@ export async function GET(request: NextRequest) {
         request.headers.get('if-none-match') ?? undefined,
     })
 
+    /*
+     * Se o arquivo não foi encontrado.
+     */
     if (!result) {
-      return new NextResponse('Not found', {
+      return new NextResponse('Arquivo não encontrado', {
         status: 404,
       })
     }
 
     /*
-     * Caso o navegador já possua a versão mais recente.
+     * Se o navegador já possui a versão atual.
      */
     if (result.statusCode === 304) {
       return new NextResponse(null, {
@@ -61,56 +61,96 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    /*
+     * Segurança extra:
+     * somente aceitamos resposta 200.
+     */
+    if (result.statusCode !== 200 || !result.stream) {
+      return new NextResponse('Arquivo não disponível', {
+        status: 404,
+      })
+    }
+
+    /*
+     * Nome original do arquivo.
+     *
+     * Como pathname pode ser uma URL completa:
+     *
+     * https://xxxxx.public.blob.vercel-storage.com/arquivo.pdf
+     *
+     * pegamos somente a parte final.
+     */
+    let filename = 'arquivo'
+
+    try {
+      const blobUrl = new URL(pathname)
+      const lastPart = blobUrl.pathname.split('/').pop()
+
+      if (lastPart) {
+        filename = decodeURIComponent(lastPart)
+      }
+    } catch {
+      /*
+       * Caso pathname não seja uma URL,
+       * tenta tratar como caminho normal.
+       */
+      const lastPart = pathname.split('/').pop()
+
+      if (lastPart) {
+        try {
+          filename = decodeURIComponent(lastPart)
+        } catch {
+          filename = lastPart
+        }
+      }
+    }
+
     const headers: Record<string, string> = {
       'Content-Type':
-        result.blob.contentType ||
-        'application/octet-stream',
+        result.blob.contentType || 'application/octet-stream',
 
       ETag: result.blob.etag,
 
       'Cache-Control': 'private, no-cache',
+
+      'Content-Length': String(result.blob.size ?? 0),
     }
 
     /*
-     * ?download=1 força o download.
+     * Download:
+     * força o navegador a salvar o arquivo.
      */
-    if (download) {
-      const filename =
-        pathname.split('/').pop() || 'arquivo'
-
-      /*
-       * Fallback ASCII para nomes com caracteres especiais.
-       *
-       * Exemplo:
-       * JUNDIAÍ.pdf
-       *
-       * filename:
-       * JUNDIA_.pdf
-       *
-       * filename*:
-       * mantém o nome original em UTF-8.
-       */
+    if (download === '1') {
       const asciiName = filename
         .replace(/[^\x20-\x7E]/g, '_')
         .replace(/"/g, '')
 
       headers['Content-Disposition'] =
         `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+    } else {
+      /*
+       * Visualização:
+       * permite que PDF/imagem/etc. sejam abertos no navegador.
+       */
+      headers['Content-Disposition'] = 'inline'
     }
 
     return new NextResponse(result.stream, {
+      status: 200,
       headers,
     })
   } catch (error) {
-    console.error('Error serving file:', error)
+    console.error('ERRO API /api/file:', error)
 
     return NextResponse.json(
       {
         error: 'Failed to serve file',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Erro desconhecido',
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     )
   }
 }
