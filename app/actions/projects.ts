@@ -880,3 +880,25 @@ export async function getProjectEvaluation(
 
   return data as ProjectEvaluation | null
 }
+
+// Retorna os IDs de todos os projetos do usuário que já têm avaliação
+// respondida — usado pra pintar a estrela cheia na tabela sem precisar
+// buscar avaliação por avaliação.
+export async function getEvaluatedProjectIds(): Promise<string[]> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('project_evaluations')
+    .select('project_id')
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error fetching evaluated project ids:', error)
+    return []
+  }
+
+  return (data || []).map((row) => row.project_id)
+}

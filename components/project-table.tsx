@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Pencil,
@@ -37,6 +37,7 @@ import { ProjectEvaluationDialog } from './project-evaluation-dialog'
 import {
   deleteProject,
   getProjectEvaluation,
+  getEvaluatedProjectIds,
 } from '@/app/actions/projects'
 
 import { getFormularioLink } from '@/lib/google-form'
@@ -149,6 +150,27 @@ export function ProjectTable({
   // Controla o feedback visual (ícone de check) do botão de copiar link
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
+  // IDs dos projetos que já têm avaliação respondida — usado pra
+  // preencher a estrela de amarelo sólido
+  const [evaluatedIds, setEvaluatedIds] = useState<Set<string>>(new Set())
+
+  // Busca os projetos avaliados sempre que a lista de projetos mudar
+  useEffect(() => {
+    let cancelled = false
+
+    getEvaluatedProjectIds()
+      .then((ids) => {
+        if (!cancelled) setEvaluatedIds(new Set(ids))
+      })
+      .catch((error) => {
+        console.error('Erro ao buscar projetos avaliados:', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [projects])
+
   const formatCurrency = (value: number) => {
     if (hideValues) return 'R$ ••••••'
 
@@ -199,6 +221,11 @@ export function ProjectTable({
     if (!open) {
       setEvaluationProject(null)
       setSelectedEvaluation(null)
+      // Reconsulta os IDs avaliados, caso essa tenha sido a primeira
+      // resposta chegando pra esse projeto
+      getEvaluatedProjectIds()
+        .then((ids) => setEvaluatedIds(new Set(ids)))
+        .catch((error) => console.error('Erro ao atualizar avaliados:', error))
     }
   }
 
@@ -446,7 +473,11 @@ export function ProjectTable({
                             handleViewEvaluation(project)
                           }
                         >
-                          <Star className="h-3.5 w-3.5 text-yellow-500" />
+                          <Star
+                            className={`h-3.5 w-3.5 text-yellow-500 ${
+                              evaluatedIds.has(project.id) ? 'fill-yellow-500' : ''
+                            }`}
+                          />
                         </Button>
 
                         <Button
@@ -672,7 +703,11 @@ export function ProjectTable({
                         handleViewEvaluation(project)
                       }
                     >
-                      <Star className="h-4 w-4 text-yellow-500" />
+                      <Star
+                        className={`h-4 w-4 text-yellow-500 ${
+                          evaluatedIds.has(project.id) ? 'fill-yellow-500' : ''
+                        }`}
+                      />
                     </Button>
 
                     <Button
