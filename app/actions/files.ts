@@ -1,343 +1,110 @@
-'use server'
-
+import { type NextRequest, NextResponse } from 'next/server'
+import { get } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
-import { del, put } from '@vercel/blob'
 
-/* ============ PASTAS ============ */
-
-export async function getFolders(projectId: string) {
+export async function GET(request: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
 
-  const { data, error } = await supabase
-    .from('folders')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('project_id', projectId)
-    .order('is_oficial', { ascending: false })
-    .order('created_at', { ascending: true })
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (error) {
-    console.error('Error fetching folders:', error)
-    return []
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
   }
-  return data || []
-}
 
-export async function createFolder(projectId: string, nome: string, parentId: string | null) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
+  try {
+    const pathname = request.nextUrl.searchParams.get('pathname')
+    const download = request.nextUrl.searchParams.get('download')
 
-  const { error } = await supabase.from('folders').insert({
-    user_id: user.id,
-    project_id: projectId,
-    parent_id: parentId,
-    nome,
-    is_oficial: false,
-  })
-
-  if (error) {
-    console.error('Error creating folder:', error)
-    throw new Error('Erro ao criar pasta')
-  }
-}
-
-export async function renameFolder(id: string, nome: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { error } = await supabase
-    .from('folders')
-    .update({ nome })
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error renaming folder:', error)
-    throw new Error('Erro ao renomear pasta')
-  }
-}
-
-export async function deleteFolder(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { data: files } = await supabase
-    .from('files')
-    .select('pathname')
-    .eq('user_id', user.id)
-    .eq('folder_id', id)
-
-  const { data: images } = await supabase
-    .from('images_3d')
-    .select('pathname')
-    .eq('user_id', user.id)
-    .eq('folder_id', id)
-
-  const pathnames = [
-    ...(files || []).map((f) => f.pathname),
-    ...(images || []).map((i) => i.pathname),
-  ]
-  if (pathnames.length > 0) {
-    try {
-      await del(pathnames)
-    } catch (e) {
-      console.error('Error deleting blobs:', e)
+    if (!pathname) {
+      return NextResponse.json(
+        { error: 'Missing pathname' },
+        { status: 400 }
+      )
     }
+
+    /*
+     * IMPORTANTE:
+     * Os arquivos atualmente são enviados para o Vercel Blob
+     * com access: 'public'.
+     *
+     * Portanto, o get() também precisa usar access: 'public'.
+     */
+    const result = await get(pathname, {
+      access: 'public',
+      ifNoneMatch:
+        request.headers.get('if-none-match') ?? undefined,
+    })
+
+    if (!result) {
+      return new NextResponse('Not found', {
+        status: 404,
+      })
+    }
+
+    /*
+     * Resposta 304:
+     * o navegador já possui a versão mais recente.
+     */
+    if (result.statusCode === 304) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          ETag: result.blob.etag,
+          'Cache-Control': 'private, no-cache',
+        },
+      })
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type':
+        result.blob.contentType || 'application/octet-stream',
+
+      ETag: result.blob.etag,
+
+      'Cache-Control': 'private, no-cache',
+    }
+
+    /*
+     * Quando ?download=1 estiver presente,
+     * força o navegador a baixar o arquivo.
+     */
+    if (download) {
+      const filename =
+        pathname.split('/').pop() || 'arquivo'
+
+      /*
+       * Fallback ASCII para navegadores que tenham
+       * dificuldade com caracteres especiais.
+       *
+       * Exemplo:
+       * JUNDIAÍ.pdf
+       * vira:
+       * JUNDIA_.pdf
+       *
+       * O filename* mantém o nome original em UTF-8.
+       */
+      const asciiName = filename
+        .replace(/[^\x20-\x7E]/g, '_')
+        .replace(/"/g, '')
+
+      headers['Content-Disposition'] =
+        `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+    }
+
+    return new NextResponse(result.stream, {
+      headers,
+    })
+  } catch (error) {
+    console.error('Error serving file:', error)
+
+    return NextResponse.json(
+      { error: 'Failed to serve file' },
+      { status: 500 }
+    )
   }
-
-  const { error } = await supabase
-    .from('folders')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error deleting folder:', error)
-    throw new Error('Erro ao excluir pasta')
-  }
-}
-
-/* ============ ARQUIVOS ============ */
-
-export async function getFiles(projectId: string, folderId: string | null) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  let query = supabase
-    .from('files')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('project_id', projectId)
-
-  if (folderId === null) {
-    query = query.is('folder_id', null)
-  } else {
-    query = query.eq('folder_id', folderId)
-  }
-
-  const { data, error } = await query.order('data_upload', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching files:', error)
-    return []
-  }
-  return data || []
-}
-
-/**
- * Faz o upload real do ficheiro para o Vercel Blob e devolve a URL pública.
- * Deve ser chamado ANTES de saveFileMetadata, passando a URL retornada como pathname.
- */
-export async function uploadFile(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const file = formData.get('file') as File | null
-  if (!file) throw new Error('Nenhum ficheiro enviado')
-
-  const blob = await put(file.name, file, {
-    access: 'public',
-    addRandomSuffix: true,
-  })
-
-  return { url: blob.url }
-}
-
-export async function saveFileMetadata(params: {
-  projectId: string
-  folderId: string | null
-  nome: string
-  pathname: string
-  tipo: string
-  tamanho: number
-  responsavel: string
-  observacoes: string
-}) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { error } = await supabase.from('files').insert({
-    user_id: user.id,
-    project_id: params.projectId,
-    folder_id: params.folderId,
-    nome: params.nome,
-    pathname: params.pathname,
-    tipo: params.tipo,
-    tamanho: params.tamanho,
-    responsavel: params.responsavel || null,
-    observacoes: params.observacoes || null,
-  })
-
-  if (error) {
-    console.error('Error saving file metadata:', error)
-    throw new Error('Erro ao salvar arquivo')
-  }
-}
-
-export async function moveFile(id: string, folderId: string | null) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { error } = await supabase
-    .from('files')
-    .update({ folder_id: folderId })
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error moving file:', error)
-    throw new Error('Erro ao mover arquivo')
-  }
-}
-
-export async function deleteFile(id: string, pathname: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  try {
-    await del(pathname)
-  } catch (e) {
-    console.error('Error deleting blob:', e)
-  }
-
-  const { error } = await supabase
-    .from('files')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error deleting file:', error)
-    throw new Error('Erro ao excluir arquivo')
-  }
-}
-
-/* ============ IMAGENS 3D ============ */
-
-export async function getImages(projectId: string, folderId: string | null) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  let query = supabase
-    .from('images_3d')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('project_id', projectId)
-
-  if (folderId === null) {
-    query = query.is('folder_id', null)
-  } else {
-    query = query.eq('folder_id', folderId)
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching images:', error)
-    return []
-  }
-  return data || []
-}
-
-export async function saveImageMetadata(params: {
-  projectId: string
-  folderId: string | null
-  nome: string
-  pathname: string
-  tamanho: number
-}) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  const { error } = await supabase.from('images_3d').insert({
-    user_id: user.id,
-    project_id: params.projectId,
-    folder_id: params.folderId,
-    nome: params.nome,
-    pathname: params.pathname,
-    tamanho: params.tamanho,
-  })
-
-  if (error) {
-    console.error('Error saving image metadata:', error)
-    throw new Error('Erro ao salvar imagem')
-  }
-}
-
-export async function deleteImage(id: string, pathname: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Não autenticado')
-
-  try {
-    await del(pathname)
-  } catch (e) {
-    console.error('Error deleting blob:', e)
-  }
-
-  const { error } = await supabase
-    .from('images_3d')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error deleting image:', error)
-    throw new Error('Erro ao excluir imagem')
-  }
-}
-
-/* ============ IMAGE FOLDERS (galeria) ============ */
-
-export async function getImageFolders(projectId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const { data, error } = await supabase
-    .from('folders')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching image folders:', error)
-    return []
-  }
-  return data || []
-}
-
-/* ============ DRIVERS (todos os arquivos de todos os projetos, por ano) ============ */
-
-export async function getAllProjectFiles(year: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const { data, error } = await supabase
-    .from('files')
-    .select('*, projects!inner(marca, cidade, year, month)')
-    .eq('user_id', user.id)
-    .eq('projects.year', year)
-    .order('data_upload', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching project files:', error)
-    return []
-  }
-
-  return data || []
 }
