@@ -10,6 +10,7 @@ import type { DailyTask } from '@/lib/types'
 
 const KEEP_DAYS = 60
 const DEFAULT_ARCHITECT = 'KALY'
+const SESSION_ERROR = 'Sessão expirada. Faça login novamente.'
 
 const toISO = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -24,6 +25,15 @@ function cleanArchitect(architect: string) {
   return architect.trim().toUpperCase().slice(0, 30) || DEFAULT_ARCHITECT
 }
 
+/** Cria o client e já verifica se existe usuário logado. */
+async function getAuthedClient() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return { supabase, user }
+}
+
 // ---------------------------------------------------------------------------
 // Leitura
 // ---------------------------------------------------------------------------
@@ -33,7 +43,12 @@ export async function getDailyTasks(
   date: string,
 ): Promise<{ tasks: DailyTask[]; olderPending: number }> {
   if (!isISODate(date)) return { tasks: [], olderPending: 0 }
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+
+  if (!user) {
+    console.error('getDailyTasks: sem usuário na sessão')
+    return { tasks: [], olderPending: 0 }
+  }
 
   const [{ data, error }, { count }] = await Promise.all([
     supabase
@@ -58,7 +73,13 @@ export async function getDailyTasks(
 /** Total de pendentes até hoje (bolinha do ícone). */
 export async function getPendingCount(today: string): Promise<number> {
   if (!isISODate(today)) return 0
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+
+  if (!user) {
+    console.error('getPendingCount: sem usuário na sessão')
+    return 0
+  }
+
   const { count, error } = await supabase
     .from('daily_tasks')
     .select('id', { count: 'exact', head: true })
@@ -85,7 +106,9 @@ export async function addDailyTask(input: {
   if (!text) return { error: 'Digite a tarefa.' }
   if (!isISODate(input.date)) return { error: 'Data inválida.' }
 
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return { error: SESSION_ERROR }
+
   const { error } = await supabase.from('daily_tasks').insert({
     text,
     task_date: input.date,
@@ -94,7 +117,11 @@ export async function addDailyTask(input: {
 
   if (error) {
     console.error('addDailyTask:', error)
-    return { error: 'Não foi possível adicionar a tarefa.' }
+    // TEMPORÁRIO: mostra o código/mensagem real na tela para diagnosticar.
+    // Depois de descobrir a causa, troque por: 'Não foi possível adicionar a tarefa.'
+    return {
+      error: `Não foi possível adicionar a tarefa. (${error.code}: ${error.message})`,
+    }
   }
   return {}
 }
@@ -103,7 +130,9 @@ export async function toggleDailyTask(
   id: string,
   done: boolean,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return { error: SESSION_ERROR }
+
   const { error } = await supabase.from('daily_tasks').update({ done }).eq('id', id)
 
   if (error) {
@@ -120,7 +149,9 @@ export async function updateDailyTask(
   const text = cleanText(input.text)
   if (!text) return { error: 'Digite a tarefa.' }
 
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return { error: SESSION_ERROR }
+
   const { error } = await supabase
     .from('daily_tasks')
     .update({ text, architect: cleanArchitect(input.architect) })
@@ -134,7 +165,9 @@ export async function updateDailyTask(
 }
 
 export async function deleteDailyTask(id: string): Promise<{ error?: string }> {
-  const supabase = await createClient()
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return { error: SESSION_ERROR }
+
   const { error } = await supabase.from('daily_tasks').delete().eq('id', id)
 
   if (error) {
@@ -147,7 +180,10 @@ export async function deleteDailyTask(id: string): Promise<{ error?: string }> {
 /** Move todas as pendentes de dias anteriores para o dia informado. */
 export async function moveOlderPendingToDate(date: string): Promise<{ error?: string }> {
   if (!isISODate(date)) return { error: 'Data inválida.' }
-  const supabase = await createClient()
+
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return { error: SESSION_ERROR }
+
   const { error } = await supabase
     .from('daily_tasks')
     .update({ task_date: date })
@@ -163,9 +199,12 @@ export async function moveOlderPendingToDate(date: string): Promise<{ error?: st
 
 /** Apaga tarefas com mais de 60 dias (reforço do pg_cron). */
 export async function cleanupOldDailyTasks(): Promise<void> {
+  const { supabase, user } = await getAuthedClient()
+  if (!user) return
+
   const limit = new Date()
   limit.setDate(limit.getDate() - KEEP_DAYS)
-  const supabase = await createClient()
+
   const { error } = await supabase
     .from('daily_tasks')
     .delete()

@@ -575,7 +575,7 @@ export function FilesManager({
             /*
              * Para arquivos grandes, usa multipart.
              */
-            multipart: true,
+            multipart: selectedFile.size > 50 * 1024 * 1024,
 
             /*
              * Progresso visual.
