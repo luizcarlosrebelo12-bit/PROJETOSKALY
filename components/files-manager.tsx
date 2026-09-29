@@ -137,21 +137,18 @@ const getFileUrl = (
   if (!pathname) return '#'
 
   /*
-   * Arquivo novo do Vercel Blob
+   * Se for visualização pura e for URL do Vercel Blob,
+   * podemos retornar direto. Mas se for download, 
+   * passamos pela API para forçar o Content-Disposition (download real).
    */
   if (
-    pathname.startsWith('http://') ||
-    pathname.startsWith('https://')
+    !download &&
+    (pathname.startsWith('http://') ||
+     pathname.startsWith('https://'))
   ) {
     return pathname
   }
 
-  /*
-   * Arquivo antigo.
-   *
-   * Mantemos a rota atual para tentar servir
-   * arquivos antigos que ainda estejam disponíveis.
-   */
   const params = new URLSearchParams({
     pathname,
   })

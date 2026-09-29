@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const pathname = request.nextUrl.searchParams.get('pathname')
+    const rawPathname = request.nextUrl.searchParams.get('pathname')
     const download = request.nextUrl.searchParams.get('download')
 
-    if (!pathname) {
+    if (!rawPathname) {
       return NextResponse.json(
         { error: 'Missing pathname' },
         { status: 400 }
@@ -28,73 +28,80 @@ export async function GET(request: NextRequest) {
     }
 
     /*
-     * Os arquivos atuais estão no Vercel Blob como PUBLIC.
-     *
-     * O get() aceita tanto pathname quanto URL completa.
-     * Aqui usamos exatamente o valor salvo no banco.
+     * CORREÇÃO: Se o pathname salvo no banco for uma URL completa do Vercel Blob
+     * (ex: https://xxx.public.blob.vercel-storage.com/arquivo.zip), 
+     * precisamos extrair apenas o caminho relativo ou a chave que o get() espera,
+     * ou usar diretamente se suportado. No Vercel Blob, a função get() aceita 
+     * a URL completa ou o pathname relativo dependendo da versão, mas tratar 
+     * a URL garante compatibilidade absoluta.
      */
-    const result = await get(pathname, {
+    let blobIdentifier = rawPathname
+
+    if (rawPathname.startsWith('http://') || rawPathname.startsWith('https://')) {
+      try {
+        const urlObj = new URL(rawPathname)
+        // Remove a barra inicial para obter o pathname correto do blob (ex: "pasta/arquivo.zip")
+        blobIdentifier = urlObj.pathname.startsWith('/') 
+          ? urlObj.pathname.substring(1) 
+          : urlObj.pathname
+      } catch {
+        blobIdentifier = rawPathname
+      }
+    }
+
+    const result = await get(blobIdentifier, {
       access: 'public',
       ifNoneMatch:
         request.headers.get('if-none-match') ?? undefined,
     })
 
     /*
-     * Se o arquivo não foi encontrado.
+     * Se o arquivo não foi encontrado, tenta buscar usando a URL completa diretamente caso o SDK aceite
      */
-    if (!result) {
+    let finalResult = result
+    if (!finalResult && blobIdentifier !== rawPathname) {
+      try {
+        finalResult = await get(rawPathname, {
+          access: 'public',
+        })
+      } catch {
+        // Ignora e mantém o erro original
+      }
+    }
+
+    if (!finalResult) {
       return new NextResponse('Arquivo não encontrado', {
         status: 404,
       })
     }
 
-    /*
-     * Se o navegador já possui a versão atual.
-     */
-    if (result.statusCode === 304) {
+    if (finalResult.statusCode === 304) {
       return new NextResponse(null, {
         status: 304,
         headers: {
-          ETag: result.blob.etag,
+          ETag: finalResult.blob.etag,
           'Cache-Control': 'private, no-cache',
         },
       })
     }
 
-    /*
-     * Segurança extra:
-     * somente aceitamos resposta 200.
-     */
-    if (result.statusCode !== 200 || !result.stream) {
+    if (finalResult.statusCode !== 200 || !finalResult.stream) {
       return new NextResponse('Arquivo não disponível', {
         status: 404,
       })
     }
 
-    /*
-     * Nome original do arquivo.
-     *
-     * Como pathname pode ser uma URL completa:
-     *
-     * https://xxxxx.public.blob.vercel-storage.com/arquivo.pdf
-     *
-     * pegamos somente a parte final.
-     */
     let filename = 'arquivo'
 
     try {
-      const blobUrl = new URL(pathname)
+      const blobUrl = new URL(rawPathname)
       const lastPart = blobUrl.pathname.split('/').pop()
 
       if (lastPart) {
         filename = decodeURIComponent(lastPart)
       }
     } catch {
-      /*
-       * Caso pathname não seja uma URL,
-       * tenta tratar como caminho normal.
-       */
-      const lastPart = pathname.split('/').pop()
+      const lastPart = rawPathname.split('/').pop()
 
       if (lastPart) {
         try {
@@ -107,19 +114,15 @@ export async function GET(request: NextRequest) {
 
     const headers: Record<string, string> = {
       'Content-Type':
-        result.blob.contentType || 'application/octet-stream',
+        finalResult.blob.contentType || 'application/octet-stream',
 
-      ETag: result.blob.etag,
+      ETag: finalResult.blob.etag,
 
       'Cache-Control': 'private, no-cache',
 
-      'Content-Length': String(result.blob.size ?? 0),
+      'Content-Length': String(finalResult.blob.size ?? 0),
     }
 
-    /*
-     * Download:
-     * força o navegador a salvar o arquivo.
-     */
     if (download === '1') {
       const asciiName = filename
         .replace(/[^\x20-\x7E]/g, '_')
@@ -128,14 +131,10 @@ export async function GET(request: NextRequest) {
       headers['Content-Disposition'] =
         `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`
     } else {
-      /*
-       * Visualização:
-       * permite que PDF/imagem/etc. sejam abertos no navegador.
-       */
       headers['Content-Disposition'] = 'inline'
     }
 
-    return new NextResponse(result.stream, {
+    return new NextResponse(finalResult.stream, {
       status: 200,
       headers,
     })
