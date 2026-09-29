@@ -9,6 +9,7 @@ import {
   Trash2,
   Pencil,
   Download,
+  Eye,
   ChevronRight,
   Home,
   Lock,
@@ -88,6 +89,29 @@ function calculateBusinessDaysPlaceholder() {
   // (mantido apenas para não quebrar nada — não usado aqui)
 }
 
+// Arquivos ficam no Vercel Blob privado: só a rota /api/file consegue servi-los
+const getFileUrl = (pathname: string, download = false) => {
+  if (!pathname) return '#'
+
+  let blobPath = pathname
+
+  if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
+    try {
+      const url = new URL(pathname)
+      // URL externa (não é do Blob): usa como está
+      if (!url.hostname.endsWith('blob.vercel-storage.com')) return pathname
+      // URL do Blob privado: extrai o caminho e serve pela rota /api/file
+      blobPath = decodeURIComponent(url.pathname.replace(/^\//, ''))
+    } catch {
+      return pathname
+    }
+  }
+
+  const params = new URLSearchParams({ pathname: blobPath })
+  if (download) params.set('download', '1')
+  return `/api/file?${params.toString()}`
+}
+
 export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
   const [folders, setFolders] = useState<FolderType[]>([])
   const [files, setFiles] = useState<FileItem[]>([])
@@ -144,16 +168,6 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-PT')
-  }
-
-  // pathname agora é sempre uma URL completa do Vercel Blob (https://...)
-  const getFileUrl = (pathname: string) => {
-    if (!pathname) return '#'
-    if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
-      return pathname
-    }
-    // fallback para registros antigos quebrados
-    return pathname.startsWith('/') ? pathname : `/${pathname}`
   }
 
   const handleCreateFolder = async () => {
@@ -362,7 +376,12 @@ export function FilesManager({ projectId, userEmail }: FilesManagerProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Visualizar / Descarregar">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Visualizar">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </a>
+                      <a href={getFileUrl(file.pathname, true)} download>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Descarregar">
                           <Download className="h-4 w-4" />
                         </Button>
                       </a>

@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
 
     if (download) {
       const filename = pathname.split('/').pop() || 'arquivo'
-      headers['Content-Disposition'] = `attachment; filename="${filename}"`
+      // Versão ASCII (fallback) + versão UTF-8 para nomes com acento (ex: JUNDIAÍ)
+      const asciiName = filename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '')
+      headers['Content-Disposition'] =
+        `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`
     }
 
     return new NextResponse(result.stream, { headers })

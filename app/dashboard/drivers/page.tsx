@@ -57,6 +57,29 @@ function FileTypeIcon({ tipo }: { tipo: string }) {
   return <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
 }
 
+// Arquivos ficam no Vercel Blob privado: só a rota /api/file consegue servi-los
+const getFileUrl = (pathname: string, download = false) => {
+  if (!pathname) return '#'
+
+  let blobPath = pathname
+
+  if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
+    try {
+      const url = new URL(pathname)
+      // URL externa (não é do Blob): usa como está
+      if (!url.hostname.endsWith('blob.vercel-storage.com')) return pathname
+      // URL do Blob privado: extrai o caminho e serve pela rota /api/file
+      blobPath = decodeURIComponent(url.pathname.replace(/^\//, ''))
+    } catch {
+      return pathname
+    }
+  }
+
+  const params = new URLSearchParams({ pathname: blobPath })
+  if (download) params.set('download', '1')
+  return `/api/file?${params.toString()}`
+}
+
 export default function DriversPage() {
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([])
@@ -94,18 +117,6 @@ export default function DriversPage() {
       }
       return next
     })
-  }
-
-  // Mesma lógica de resolução de URL usada no files-manager.tsx
-  const getFileUrl = (pathname: string) => {
-    if (!pathname) return '#'
-    if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
-      return pathname
-    }
-    if (pathname.includes('uploads/')) {
-      return pathname.startsWith('/') ? pathname : `/${pathname}`
-    }
-    return `/uploads/${pathname}`
   }
 
   const formatSize = (bytes: number | null) => {
@@ -258,7 +269,7 @@ export default function DriversPage() {
                               <FolderOpen className="h-4 w-4 text-primary" />
                             </Button>
                           </Link>
-                          <a href={getFileUrl(file.pathname)} target="_blank" rel="noopener noreferrer">
+                          <a href={getFileUrl(file.pathname, true)} download>
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Baixar">
                               <Download className="h-4 w-4" />
                             </Button>
