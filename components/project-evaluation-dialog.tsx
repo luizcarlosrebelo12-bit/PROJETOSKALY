@@ -18,6 +18,10 @@ interface ProjectEvaluationDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+// Perguntas abertas nunca viram estrela, mesmo que a resposta seja um número.
+const OPEN_QUESTION_REGEX =
+  /existe algum|melhorar|sugest|coment|observa|elogio|cr[ií]tic/i
+
 function formatAnswer(value: unknown): string {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -34,19 +38,21 @@ function formatAnswer(value: unknown): string {
   return String(value)
 }
 
-function isRatingQuestion(
-  question: string,
-  answer: unknown
-): boolean {
-  const value = Number(formatAnswer(answer).trim())
+// Extrai o número da pergunta: "05. O projeto..." -> 5
+function getQuestionNumber(question: string): number | null {
+  const match = question.trim().match(/^(\d{1,2})\s*[.\-)]/)
+  return match ? Number(match[1]) : null
+}
 
-  return (
-    value >= 1 &&
-    value <= 5 &&
-    /nota|avalia|satisfa|estrela|qualidade|atendimento|recomend/i.test(
-      question
-    )
-  )
+// Retorna a nota (1 a 5) se a resposta deve virar estrela, senão null
+function getRating(question: string, answer: unknown): number | null {
+  if (getQuestionNumber(question) === null) return null
+  if (OPEN_QUESTION_REGEX.test(question)) return null
+
+  const text = formatAnswer(answer).trim()
+  if (!/^[1-5]$/.test(text)) return null
+
+  return Number(text)
 }
 
 function RatingStars({ value }: { value: number }) {
@@ -63,9 +69,7 @@ function RatingStars({ value }: { value: number }) {
         />
       ))}
 
-      <span className="ml-1 text-sm font-medium">
-        {value}/5
-      </span>
+      <span className="ml-1 text-sm font-medium">{value}/5</span>
     </div>
   )
 }
@@ -78,10 +82,21 @@ export function ProjectEvaluationDialog({
   onOpenChange,
 }: ProjectEvaluationDialogProps) {
   const answers = evaluation?.answers
-    ? Object.entries(evaluation.answers).filter(
-        ([question]) =>
-          !/id do projeto|project id|projectid/i.test(question)
-      )
+    ? Object.entries(evaluation.answers)
+        .filter(
+          ([question]) =>
+            !/id do projeto|project id|projectid/i.test(question)
+        )
+        // Perguntas sem número (nome, carimbo) ficam no topo, na ordem original;
+        // as numeradas vêm em ordem crescente. O sort do JS é estável.
+        .sort(([a], [b]) => {
+          const na = getQuestionNumber(a)
+          const nb = getQuestionNumber(b)
+          if (na === null && nb === null) return 0
+          if (na === null) return -1
+          if (nb === null) return 1
+          return na - nb
+        })
     : []
 
   return (
@@ -114,9 +129,7 @@ export function ProjectEvaluationDialog({
               </p>
 
               <p className="font-medium">
-                {new Date(
-                  evaluation.submitted_at
-                ).toLocaleString('pt-BR')}
+                {new Date(evaluation.submitted_at).toLocaleString('pt-BR')}
               </p>
 
               {evaluation.respondent_email && (
@@ -139,21 +152,14 @@ export function ProjectEvaluationDialog({
                 </p>
               ) : (
                 answers.map(([question, answer]) => {
-                  const numericAnswer = Number(
-                    formatAnswer(answer).trim()
-                  )
+                  const rating = getRating(question, answer)
 
                   return (
-                    <div
-                      key={question}
-                      className="space-y-2 p-4"
-                    >
-                      <p className="text-sm font-medium">
-                        {question}
-                      </p>
+                    <div key={question} className="space-y-2 p-4">
+                      <p className="text-sm font-medium">{question}</p>
 
-                      {isRatingQuestion(question, answer) ? (
-                        <RatingStars value={numericAnswer} />
+                      {rating !== null ? (
+                        <RatingStars value={rating} />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                           {formatAnswer(answer)}
