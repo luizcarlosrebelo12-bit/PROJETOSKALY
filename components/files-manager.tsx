@@ -152,13 +152,8 @@ const getFileUrl = (
     return `/api/download?${params.toString()}`
   }
 
-  const params = new URLSearchParams({ pathname })
-
-  if (download) {
-    params.set('download', '1')
-  }
-
-  return `/api/file?${params.toString()}`
+  // Arquivo antigo local: não existe mais no armazenamento
+  return '#'
 }
 
 /* =========================================================
