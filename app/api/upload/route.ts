@@ -10,8 +10,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
 
-      // Chamado quando o navegador pede autorização para enviar.
-      // A checagem de login fica AQUI, porque o callback de
+      // A checagem de login fica aqui, porque o callback de
       // "upload concluído" vem da Vercel, sem cookies de sessão.
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const supabase = await createClient()
@@ -57,7 +56,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
 
       onUploadCompleted: async ({ blob }) => {
-        console.log('BLOB: upload concluído', blob.url)
+        console.log('BLOB: upload concluído', blob.pathname)
       },
     })
 
