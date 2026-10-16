@@ -32,6 +32,7 @@ import type {
 import { STATUS_COLORS } from '@/lib/types'
 
 import { ProjectDialog } from './project-dialog'
+import { PagamentoFinalMes } from './pagamento-final-mes'
 import { ProjectEvaluationDialog } from './project-evaluation-dialog'
 
 import {
@@ -274,15 +275,24 @@ export function ProjectTable({
           {projects.length === 1 ? 'projeto' : 'projetos'}
         </h2>
 
-        <Button
-          onClick={() => {
-            setEditingProject(null)
-            setIsDialogOpen(true)
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Projeto
-        </Button>
+        <div className="flex items-center gap-2">
+          <PagamentoFinalMes
+            year={year}
+            month={month}
+            hideValues={hideValues}
+            onSaved={onRefresh}
+          />
+
+          <Button
+            onClick={() => {
+              setEditingProject(null)
+              setIsDialogOpen(true)
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Projeto
+          </Button>
+        </div>
       </div>
 
       {/* Tabela visível apenas no desktop */}
