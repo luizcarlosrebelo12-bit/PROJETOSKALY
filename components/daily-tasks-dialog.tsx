@@ -1,7 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { CheckSquare, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,6 +48,10 @@ export function DailyTasksDialog() {
   const [pendingCount, setPendingCount] = useState(0)
   const [olderPending, setOlderPending] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  // controla qual requisição é a mais recente (descarta respostas atrasadas)
+  const reqId = useRef(0)
 
   // novo
   const [newText, setNewText] = useState('')
@@ -53,13 +65,24 @@ export function DailyTasksDialog() {
   const [editOther, setEditOther] = useState('')
 
   const loadDay = useCallback(async () => {
-    const res = await getDailyTasks(date)
-    setTasks(res.tasks)
-    setOlderPending(res.olderPending)
+    const id = ++reqId.current
+    try {
+      const res = await getDailyTasks(date)
+      if (id !== reqId.current) return // chegou atrasada, descarta
+      setTasks(res.tasks)
+      setOlderPending(res.olderPending)
+    } catch (e) {
+      console.error(e)
+      if (id === reqId.current) setError('Não foi possível carregar as tarefas.')
+    }
   }, [date])
 
   const loadBadge = useCallback(async () => {
-    setPendingCount(await getPendingCount(today))
+    try {
+      setPendingCount(await getPendingCount(today))
+    } catch (e) {
+      console.error(e)
+    }
   }, [today])
 
   const refresh = useCallback(async () => {
@@ -77,28 +100,37 @@ export function DailyTasksDialog() {
     loadBadge()
   }, [loadBadge])
 
-  // ao abrir: limpa > 60 dias (reforço do cron) e carrega
+  // limpeza (> 60 dias): só uma vez ao abrir, sem travar o resto
   useEffect(() => {
-    if (!open) return
-    cleanupOldDailyTasks().then(refresh)
-  }, [open, refresh])
+    if (open) cleanupOldDailyTasks().catch(console.error)
+  }, [open])
 
-  // ao trocar de dia
+  // carrega o dia ao abrir e ao trocar de data
   useEffect(() => {
     if (open) loadDay()
-  }, [date, open, loadDay])
+  }, [open, loadDay])
 
   const resolveArch = (sel: string, other: string) =>
     sel === OTHER ? other.trim().toUpperCase() || DEFAULT_ARCHITECT : sel
 
   const run = async (fn: () => Promise<{ error?: string }>) => {
-    const res = await fn()
-    setError(res.error ?? null)
-    await refresh()
-    return !res.error
+    setBusy(true)
+    try {
+      const res = await fn()
+      setError(res.error ?? null)
+      await refresh()
+      return !res.error
+    } catch (e) {
+      console.error(e)
+      setError('Erro de conexão. Tente novamente.')
+      return false
+    } finally {
+      setBusy(false)
+    }
   }
 
   const addTask = async () => {
+    if (busy) return
     const text = newText.trim()
     if (!text) return
     const ok = await run(() =>
@@ -125,6 +157,7 @@ export function DailyTasksDialog() {
   }
 
   const saveEdit = async () => {
+    if (busy) return
     const text = editText.trim()
     if (!editId || !text) return
     const id = editId
@@ -165,6 +198,7 @@ export function DailyTasksDialog() {
         className="relative"
         onClick={() => {
           setDate(toISO(new Date()))
+          setError(null)
           setOpen(true)
         }}
         aria-label="Tarefas do dia"
@@ -227,8 +261,13 @@ export function DailyTasksDialog() {
                 onChange={(e) => setNewOther(e.target.value)}
               />
             )}
-            <Button onClick={addTask}>
-              <Plus className="mr-1 h-4 w-4" /> Adicionar
+            <Button onClick={addTask} disabled={busy}>
+              {busy ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="mr-1 h-4 w-4" />
+              )}
+              Adicionar
             </Button>
           </div>
 
@@ -242,6 +281,7 @@ export function DailyTasksDialog() {
                 size="sm"
                 className="h-6 border-amber-500 text-amber-500"
                 onClick={moveOlderHere}
+                disabled={busy}
               >
                 Trazer para este dia
               </Button>
@@ -298,7 +338,7 @@ export function DailyTasksDialog() {
                       onChange={(e) => setEditOther(e.target.value)}
                     />
                   )}
-                  <Button size="sm" onClick={saveEdit}>
+                  <Button size="sm" onClick={saveEdit} disabled={busy}>
                     Salvar
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setEditId(null)}>

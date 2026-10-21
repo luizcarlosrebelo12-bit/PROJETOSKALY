@@ -902,3 +902,106 @@ export async function getEvaluatedProjectIds(): Promise<string[]> {
 
   return (data || []).map((row) => row.project_id)
 }
+
+export async function getEstatisticasEntregues(year: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const [entreguesRes, entradasRes, totalRes] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('marca, arquiteto, data_inicio, data_final')
+      .eq('user_id', user.id)
+      .eq('year', year)
+      .eq('is_evaluation', false)
+      .eq('andamento', 'ENTREGUE'),
+    supabase
+      .from('projects')
+      .select('entrada_valor')
+      .eq('user_id', user.id)
+      .eq('is_evaluation', false)
+      .not('entrada_data', 'is', null)
+      .gte('entrada_data', `${year}-01-01`)
+      .lte('entrada_data', `${year}-12-31`),
+    supabase
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('year', year)
+      .eq('is_evaluation', false),
+  ])
+
+  if (entreguesRes.error || entradasRes.error) {
+    console.error(
+      'Error fetching estatisticas entregues:',
+      entreguesRes.error ?? entradasRes.error
+    )
+    return null
+  }
+
+  const entregues = entreguesRes.data ?? []
+  const totalEntradas = (entradasRes.data ?? []).reduce(
+    (sum, p) => sum + (Number(p.entrada_valor) || 0),
+    0
+  )
+  const totalGeral = totalRes.count ?? 0
+
+  // Por marca
+  const brandCount: Record<string, number> = {}
+  entregues.forEach((p) => {
+    const marca = p.marca || 'Não definida'
+    brandCount[marca] = (brandCount[marca] || 0) + 1
+  })
+  const byBrand = Object.entries(brandCount)
+    .map(([name, value]) => ({
+      name,
+      value,
+      percent: Math.round((value / entregues.length) * 100),
+    }))
+    .sort((a, b) => b.value - a.value)
+
+  // Por arquiteto
+  const architectCount: Record<string, number> = {}
+  entregues.forEach((p) => {
+    const arquiteto = p.arquiteto || 'Não definido'
+    architectCount[arquiteto] = (architectCount[arquiteto] || 0) + 1
+  })
+  const byArchitect = Object.entries(architectCount)
+    .map(([name, value]) => ({
+      name,
+      value,
+      percent: Math.round((value / entregues.length) * 100),
+    }))
+    .sort((a, b) => b.value - a.value)
+
+  // Média de dias úteis
+  let totalDays = 0
+  let countWithDays = 0
+  entregues.forEach((p) => {
+    if (p.data_inicio && p.data_final) {
+      const start = new Date(p.data_inicio)
+      const end = new Date(p.data_final)
+      let days = 0
+      const current = new Date(start)
+      while (current <= end) {
+        const dayOfWeek = current.getDay()
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) days++
+        current.setDate(current.getDate() + 1)
+      }
+      totalDays += days
+      countWithDays++
+    }
+  })
+  const avgDays = countWithDays > 0 ? Math.round(totalDays / countWithDays) : 0
+
+  return {
+    totalProjects: entregues.length,
+    totalGeral,
+    totalEntradas,
+    avgDays,
+    byBrand,
+    byArchitect,
+  }
+}

@@ -30,7 +30,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { getYearStats, deleteYear, getEntradaByBrand } from '@/app/actions/projects'
+import {
+  getEstatisticasEntregues,
+  deleteYear,
+  getEntradaByBrand,
+} from '@/app/actions/projects'
 import { useHideValues } from '@/components/hide-values-provider'
 import {
   AlertDialog,
@@ -58,7 +62,8 @@ const COLORS = [
 
 interface YearStats {
   totalProjects: number
-  totalValue: number
+  totalGeral: number
+  totalEntradas: number
   byBrand: { name: string; value: number; percent: number }[]
   byArchitect: { name: string; value: number; percent: number }[]
   avgDays: number
@@ -86,7 +91,7 @@ export default function EstatisticasPage() {
 
     try {
       const [data, entradaBrandData] = await Promise.all([
-        getYearStats(year),
+        getEstatisticasEntregues(year),
         getEntradaByBrand(year),
       ])
 
@@ -186,7 +191,7 @@ export default function EstatisticasPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {stats && stats.totalProjects > 0 && (
+            {stats && stats.totalGeral > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -246,11 +251,11 @@ export default function EstatisticasPage() {
             <Calendar className="mx-auto h-10 w-10 text-muted-foreground sm:h-12 sm:w-12" />
 
             <h2 className="mt-3 text-lg font-semibold text-foreground sm:mt-4 sm:text-xl">
-              Nenhum projeto em {year}
+              Nenhum projeto entregue em {year}
             </h2>
 
             <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-              Não há projetos cadastrados para este ano.
+              Não há projetos entregues para este ano.
             </p>
           </div>
         ) : (
@@ -273,13 +278,13 @@ export default function EstatisticasPage() {
               <Card className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground sm:text-sm">
-                    Valor Total
+                    Total de Entradas
                   </span>
                   <Calendar className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
                 </div>
 
                 <div className="mt-1 text-lg font-bold text-foreground sm:text-2xl">
-                  {formatCurrency(stats.totalValue)}
+                  {formatCurrency(stats.totalEntradas)}
                 </div>
               </Card>
 
@@ -354,8 +359,7 @@ export default function EstatisticasPage() {
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
                           style={{
-                            backgroundColor:
-                              COLORS[index % COLORS.length],
+                            backgroundColor: COLORS[index % COLORS.length],
                           }}
                         />
 
@@ -410,8 +414,7 @@ export default function EstatisticasPage() {
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
                           style={{
-                            backgroundColor:
-                              COLORS[index % COLORS.length],
+                            backgroundColor: COLORS[index % COLORS.length],
                           }}
                         />
 
