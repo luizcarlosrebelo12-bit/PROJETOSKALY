@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CheckSquare,
   ChevronLeft,
@@ -13,22 +13,14 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  getDailyTasks,
-  getPendingCount,
-  addDailyTask,
-  toggleDailyTask,
-  updateDailyTask,
-  deleteDailyTask,
-  moveOlderPendingToDate,
-  cleanupOldDailyTasks,
-} from '@/app/actions/daily-tasks'
+import { createClient } from '@/lib/supabase/client'
 import type { DailyTask } from '@/lib/types'
 
 const ARCHITECTS = ['KALY', 'NATI', 'GIOVANA']
 const DEFAULT_ARCHITECT = 'KALY'
 const OTHER = '__other'
 const KEEP_DAYS = 60
+const TIMEOUT_MS = 15000
 
 const selectClass =
   'h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground'
@@ -40,7 +32,28 @@ const fromISO = (s: string) => {
   return new Date(y, m - 1, d)
 }
 
+const cleanText = (text: string) => text.trim().slice(0, 200)
+const cleanArchitect = (a: string) => a.trim().toUpperCase().slice(0, 30) || DEFAULT_ARCHITECT
+
+/** Nunca deixa uma chamada pendurada para sempre. */
+function withTimeout<T>(p: PromiseLike<T>, ms = TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    Promise.resolve(p),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Tempo esgotado. Verifique a conexão.')), ms),
+    ),
+  ])
+}
+
+type DbError = { code?: string; message: string }
+
+const fmtError = (prefix: string, error: DbError) =>
+  `${prefix} (${error.code ?? 'erro'}: ${error.message})`
+
 export function DailyTasksDialog() {
+  // cliente do Supabase no navegador (sem passar pela fila de Server Actions)
+  const supabase = useMemo(() => createClient(), [])
+
   const [open, setOpen] = useState(false)
   const [today, setToday] = useState(() => toISO(new Date()))
   const [date, setDate] = useState(() => toISO(new Date()))
@@ -64,26 +77,62 @@ export function DailyTasksDialog() {
   const [editArch, setEditArch] = useState(DEFAULT_ARCHITECT)
   const [editOther, setEditOther] = useState('')
 
+  // ---------------------------------------------------------------------
+  // Leitura
+  // ---------------------------------------------------------------------
+
   const loadDay = useCallback(async () => {
     const id = ++reqId.current
     try {
-      const res = await getDailyTasks(date)
+      const [tasksRes, olderRes] = await withTimeout(
+        Promise.all([
+          supabase
+            .from('daily_tasks')
+            .select('*')
+            .eq('task_date', date)
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('daily_tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('done', false)
+            .lt('task_date', date),
+        ]),
+      )
       if (id !== reqId.current) return // chegou atrasada, descarta
-      setTasks(res.tasks)
-      setOlderPending(res.olderPending)
+
+      if (tasksRes.error) {
+        console.error('loadDay:', tasksRes.error)
+        setError(fmtError('Não foi possível carregar as tarefas.', tasksRes.error))
+        return
+      }
+      setTasks((tasksRes.data ?? []) as DailyTask[])
+      setOlderPending(olderRes.count ?? 0)
     } catch (e) {
       console.error(e)
-      if (id === reqId.current) setError('Não foi possível carregar as tarefas.')
+      if (id === reqId.current) {
+        setError(e instanceof Error ? e.message : 'Não foi possível carregar as tarefas.')
+      }
     }
-  }, [date])
+  }, [supabase, date])
 
   const loadBadge = useCallback(async () => {
     try {
-      setPendingCount(await getPendingCount(today))
+      const { count, error: err } = await withTimeout(
+        supabase
+          .from('daily_tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('done', false)
+          .lte('task_date', today),
+      )
+      if (err) {
+        console.error('loadBadge:', err)
+        return
+      }
+      setPendingCount(count ?? 0)
     } catch (e) {
       console.error(e)
     }
-  }, [today])
+  }, [supabase, today])
 
   const refresh = useCallback(async () => {
     await Promise.all([loadDay(), loadBadge()])
@@ -102,27 +151,37 @@ export function DailyTasksDialog() {
 
   // limpeza (> 60 dias): só uma vez ao abrir, sem travar o resto
   useEffect(() => {
-    if (open) cleanupOldDailyTasks().catch(console.error)
-  }, [open])
+    if (!open) return
+    const limit = new Date()
+    limit.setDate(limit.getDate() - KEEP_DAYS)
+    Promise.resolve(
+      supabase.from('daily_tasks').delete().lt('task_date', toISO(limit)),
+    ).catch(console.error)
+  }, [open, supabase])
 
   // carrega o dia ao abrir e ao trocar de data
   useEffect(() => {
     if (open) loadDay()
   }, [open, loadDay])
 
+  // ---------------------------------------------------------------------
+  // Escrita
+  // ---------------------------------------------------------------------
+
   const resolveArch = (sel: string, other: string) =>
     sel === OTHER ? other.trim().toUpperCase() || DEFAULT_ARCHITECT : sel
 
-  const run = async (fn: () => Promise<{ error?: string }>) => {
+  /** Executa uma operação; fn devolve a mensagem de erro (ou null se deu certo). */
+  const run = async (fn: () => Promise<string | null>) => {
     setBusy(true)
     try {
-      const res = await fn()
-      setError(res.error ?? null)
+      const msg = await fn()
+      setError(msg)
       await refresh()
-      return !res.error
+      return !msg
     } catch (e) {
       console.error(e)
-      setError('Erro de conexão. Tente novamente.')
+      setError(e instanceof Error ? e.message : 'Erro de conexão. Tente novamente.')
       return false
     } finally {
       setBusy(false)
@@ -131,11 +190,20 @@ export function DailyTasksDialog() {
 
   const addTask = async () => {
     if (busy) return
-    const text = newText.trim()
-    if (!text) return
-    const ok = await run(() =>
-      addDailyTask({ text, date, architect: resolveArch(newArch, newOther) }),
-    )
+    const text = cleanText(newText)
+    if (!text) {
+      setError('Digite a tarefa.')
+      return
+    }
+    const architect = cleanArchitect(resolveArch(newArch, newOther))
+
+    const ok = await run(async () => {
+      const { error: err } = await withTimeout(
+        supabase.from('daily_tasks').insert({ text, task_date: date, architect }),
+      )
+      return err ? fmtError('Não foi possível adicionar a tarefa.', err) : null
+    })
+
     if (ok) {
       setNewText('')
       setNewArch(DEFAULT_ARCHITECT)
@@ -145,7 +213,12 @@ export function DailyTasksDialog() {
 
   const toggle = async (t: DailyTask) => {
     setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))
-    await run(() => toggleDailyTask(t.id, !t.done))
+    await run(async () => {
+      const { error: err } = await withTimeout(
+        supabase.from('daily_tasks').update({ done: !t.done }).eq('id', t.id),
+      )
+      return err ? fmtError('Não foi possível atualizar a tarefa.', err) : null
+    })
   }
 
   const startEdit = (t: DailyTask) => {
@@ -158,21 +231,41 @@ export function DailyTasksDialog() {
 
   const saveEdit = async () => {
     if (busy) return
-    const text = editText.trim()
+    const text = cleanText(editText)
     if (!editId || !text) return
     const id = editId
-    const ok = await run(() =>
-      updateDailyTask(id, { text, architect: resolveArch(editArch, editOther) }),
-    )
+    const architect = cleanArchitect(resolveArch(editArch, editOther))
+
+    const ok = await run(async () => {
+      const { error: err } = await withTimeout(
+        supabase.from('daily_tasks').update({ text, architect }).eq('id', id),
+      )
+      return err ? fmtError('Não foi possível salvar a edição.', err) : null
+    })
     if (ok) setEditId(null)
   }
 
   const remove = async (t: DailyTask) => {
     if (!confirm('Excluir esta tarefa?')) return
-    await run(() => deleteDailyTask(t.id))
+    await run(async () => {
+      const { error: err } = await withTimeout(
+        supabase.from('daily_tasks').delete().eq('id', t.id),
+      )
+      return err ? fmtError('Não foi possível excluir a tarefa.', err) : null
+    })
   }
 
-  const moveOlderHere = () => run(() => moveOlderPendingToDate(date))
+  const moveOlderHere = () =>
+    run(async () => {
+      const { error: err } = await withTimeout(
+        supabase
+          .from('daily_tasks')
+          .update({ task_date: date })
+          .eq('done', false)
+          .lt('task_date', date),
+      )
+      return err ? fmtError('Não foi possível mover as pendentes.', err) : null
+    })
 
   const shift = (n: number) => {
     const d = fromISO(date)
@@ -220,14 +313,31 @@ export function DailyTasksDialog() {
 
           {/* navegação de dias */}
           <div className="flex items-center justify-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => shift(-1)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => shift(-1)}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="min-w-[190px] text-center font-semibold capitalize">{label}</span>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => shift(1)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => shift(1)}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setDate(toISO(new Date()))}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDate(toISO(new Date()))}
+            >
               Hoje
             </Button>
           </div>
@@ -261,7 +371,7 @@ export function DailyTasksDialog() {
                 onChange={(e) => setNewOther(e.target.value)}
               />
             )}
-            <Button onClick={addTask} disabled={busy}>
+            <Button type="button" onClick={addTask} disabled={busy}>
               {busy ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : (
@@ -277,6 +387,7 @@ export function DailyTasksDialog() {
             <div className="flex items-center justify-between gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
               <span>{olderPending} pendente(s) de dias anteriores</span>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="h-6 border-amber-500 text-amber-500"
@@ -338,10 +449,15 @@ export function DailyTasksDialog() {
                       onChange={(e) => setEditOther(e.target.value)}
                     />
                   )}
-                  <Button size="sm" onClick={saveEdit} disabled={busy}>
+                  <Button type="button" size="sm" onClick={saveEdit} disabled={busy}>
                     Salvar
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditId(null)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditId(null)}
+                  >
                     Cancelar
                   </Button>
                 </div>
@@ -363,6 +479,7 @@ export function DailyTasksDialog() {
                     {t.architect}
                   </span>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
@@ -372,6 +489,7 @@ export function DailyTasksDialog() {
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 hover:text-red-500"
