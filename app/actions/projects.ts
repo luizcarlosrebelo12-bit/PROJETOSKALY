@@ -13,6 +13,24 @@ import type {
 // ---------------------------------------------------------------------------
 // Helpers de rollover automático de mês
 // ---------------------------------------------------------------------------
+async function pagamentosFinaisPorMes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  year: number
+): Promise<number[]> {
+  const { data } = await supabase
+    .from('pagamentos_finais_mes')
+    .select('month, valor')
+    .eq('user_id', userId)
+    .eq('year', year)
+
+  const meses = Array(12).fill(0) as number[]
+  data?.forEach((r) => {
+    const i = r.month - 1
+    if (i >= 0 && i < 12) meses[i] += Number(r.valor) || 0
+  })
+  return meses
+}
 
 function isCurrentCalendarMonth(year: number, month: number) {
   const now = new Date()
@@ -96,8 +114,6 @@ export async function createProject(year: number, month: number, formData: Proje
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
-  const isEntregue = formData.andamento === 'ENTREGUE'
-  // Se marcou "NÃO TEM entrada", garante que valor/data/obs ficam vazios
   const semEntrada = !!formData.entrada_sem
 
   const { data, error } = await supabase
@@ -119,9 +135,6 @@ export async function createProject(year: number, month: number, formData: Proje
       entrada_obs: semEntrada ? null : formData.entrada_obs,
       entrada_origem: formData.entrada_origem || 'EIXO',
       entrada_sem: semEntrada,
-      pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
-      pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
-      pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
       is_evaluation: false,
     })
     .select()
@@ -151,8 +164,6 @@ export async function updateProject(id: string, formData: ProjectFormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
 
-  const isEntregue = formData.andamento === 'ENTREGUE'
-  // Se marcou "NÃO TEM entrada", garante que valor/data/obs ficam vazios
   const semEntrada = !!formData.entrada_sem
 
   const { error } = await supabase
@@ -171,9 +182,6 @@ export async function updateProject(id: string, formData: ProjectFormData) {
       entrada_obs: semEntrada ? null : formData.entrada_obs,
       entrada_origem: formData.entrada_origem || 'EIXO',
       entrada_sem: semEntrada,
-      pagamento_final_valor: isEntregue ? formData.pagamento_final_valor : null,
-      pagamento_final_data: isEntregue ? (formData.pagamento_final_data || null) : null,
-      pagamento_final_obs: isEntregue ? formData.pagamento_final_obs : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -239,6 +247,11 @@ export async function getYearSummary(year: number) {
     summary[monthIndex].count += 1
   })
 
+  const pfMes = await pagamentosFinaisPorMes(supabase, user.id, year)
+  summary.forEach((m, i) => {
+    m.total += pfMes[i]
+  })
+
   return summary
 }
 
@@ -260,13 +273,16 @@ export async function getYearStats(year: number) {
     return null
   }
 
+  const pfMes = await pagamentosFinaisPorMes(supabase, user.id, year)
+  const totalPagamentosFinais = pfMes.reduce((a, b) => a + b, 0)
+
   if (!data || data.length === 0) {
     return {
       totalProjects: 0,
       totalValue: 0,
-      totalPagamentosFinais: 0,
-      receitaTotal: 0,
-      mediaMensal: 0,
+      totalPagamentosFinais,
+      receitaTotal: totalPagamentosFinais,
+      mediaMensal: totalPagamentosFinais / 12,
       avgDays: 0,
       byBrand: [] as { name: string; value: number; percent: number }[],
       byArchitect: [] as { name: string; value: number; percent: number }[],
@@ -344,16 +360,15 @@ export async function getYearStats(year: number) {
     monthly[idx].valorProjetos += Number(p.valor) || 0
     if (p.andamento === 'ENTREGUE') {
       monthly[idx].entregues += 1
-      monthly[idx].pagamentosFinais += Number(p.pagamento_final_valor) || 0
     }
-    monthly[idx].totalRecebido = monthly[idx].valorProjetos + monthly[idx].pagamentosFinais
+  })
+
+  monthly.forEach((m, i) => {
+    m.pagamentosFinais = pfMes[i]
+    m.totalRecebido = m.valorProjetos + pfMes[i]
   })
 
   const totalValue = data.reduce((sum, p) => sum + (Number(p.valor) || 0), 0)
-  const totalPagamentosFinais = data.reduce(
-    (sum, p) => sum + (p.andamento === 'ENTREGUE' ? Number(p.pagamento_final_valor) || 0 : 0),
-    0
-  )
   const receitaTotal = totalValue + totalPagamentosFinais
 
   return {
@@ -377,7 +392,7 @@ export async function getMonthlyFinancials(year: number) {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('month, valor, andamento, pagamento_final_valor')
+    .select('month, valor, andamento')
     .eq('user_id', user.id)
     .eq('year', year)
     .eq('is_evaluation', false)
@@ -404,11 +419,14 @@ export async function getMonthlyFinancials(year: number) {
     months[idx].valorProjetos += Number(p.valor) || 0
     if (p.andamento === 'ENTREGUE') {
       months[idx].projetosEntregues += 1
-      const pf = Number(p.pagamento_final_valor) || 0
-      months[idx].pagamentosFinais += pf
-      if (pf > 0) months[idx].pagamentosRecebidos += 1
     }
-    months[idx].totalRecebido = months[idx].valorProjetos + months[idx].pagamentosFinais
+  })
+
+  const pfMes = await pagamentosFinaisPorMes(supabase, user.id, year)
+  months.forEach((m, i) => {
+    m.pagamentosFinais = pfMes[i]
+    m.pagamentosRecebidos = pfMes[i] > 0 ? 1 : 0
+    m.totalRecebido = m.valorProjetos + pfMes[i]
   })
 
   return months
@@ -664,12 +682,10 @@ export async function getPagamentoFinalSummary(year: number) {
   if (!user) return []
 
   const { data, error } = await supabase
-    .from('projects')
-    .select('marca, cidade, pagamento_final_valor, pagamento_final_data')
+    .from('pagamentos_finais_mes')
+    .select('valor, data_recebimento, month')
     .eq('user_id', user.id)
-    .eq('is_evaluation', false)
-    .eq('andamento', 'ENTREGUE')
-    .not('pagamento_final_data', 'is', null)
+    .eq('year', year)
 
   if (error) {
     console.error('Error fetching pagamento final summary:', error)
@@ -683,20 +699,17 @@ export async function getPagamentoFinalSummary(year: number) {
     projetos: [] as { marca: string; cidade: string; valor: number; data: string }[],
   }))
 
-  data?.forEach((p) => {
-    if (!p.pagamento_final_data) return
-    const [pfYear, pfMonth] = p.pagamento_final_data.split('-').map(Number)
-    if (pfYear !== year) return
-    const idx = pfMonth - 1
+  data?.forEach((r) => {
+    // usa o mês da data de recebimento, se existir; senão o mês lançado
+    const idx = r.data_recebimento
+      ? Number(r.data_recebimento.split('-')[1]) - 1
+      : r.month - 1
     if (idx < 0 || idx > 11) return
+    if (r.data_recebimento && Number(r.data_recebimento.split('-')[0]) !== year) return
+    const valor = Number(r.valor) || 0
+    if (valor <= 0) return
     months[idx].count += 1
-    months[idx].total += Number(p.pagamento_final_valor) || 0
-    months[idx].projetos.push({
-      marca: p.marca || '-',
-      cidade: p.cidade || '-',
-      valor: Number(p.pagamento_final_valor) || 0,
-      data: p.pagamento_final_data,
-    })
+    months[idx].total += valor
   })
 
   return months
@@ -903,6 +916,15 @@ export async function getEvaluatedProjectIds(): Promise<string[]> {
   return (data || []).map((row) => row.project_id)
 }
 
+// ---------------------------------------------------------------------------
+// Estatísticas (somente projetos ENTREGUES + soma das entradas)
+// ---------------------------------------------------------------------------
+
+// Estatísticas da página /estatisticas:
+// - Projetos, Por Marca, Por Arquiteto e Média Dias: só projetos ENTREGUES
+// - totalEntradas: soma de TODAS as entradas lançadas no ano (por entrada_data)
+// - totalGeral: quantidade de projetos do ano (qualquer status), usado só
+//   para decidir se o botão "Excluir Ano" aparece
 export async function getEstatisticasEntregues(year: number) {
   const supabase = await createClient()
 
@@ -1004,4 +1026,73 @@ export async function getEstatisticasEntregues(year: number) {
     byBrand,
     byArchitect,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pagamento final do MÊS (um valor por mês, não por projeto)
+// ---------------------------------------------------------------------------
+
+export async function getPagamentoFinalMes(year: number, month: number) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('pagamentos_finais_mes')
+    .select('valor, data_recebimento, obs')
+    .eq('user_id', user.id)
+    .eq('year', year)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching pagamento final do mês:', error)
+    return null
+  }
+
+  return data
+}
+
+export async function savePagamentoFinalMes(
+  year: number,
+  month: number,
+  dados: { valor: number; data: string | null; obs: string | null }
+) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  // Tudo vazio = remove o lançamento do mês
+  if (!dados.valor && !dados.data && !dados.obs) {
+    const { error } = await supabase
+      .from('pagamentos_finais_mes')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('year', year)
+      .eq('month', month)
+    if (error) throw new Error('Erro ao remover pagamento final')
+  } else {
+    const { error } = await supabase
+      .from('pagamentos_finais_mes')
+      .upsert(
+        {
+          user_id: user.id,
+          year,
+          month,
+          valor: dados.valor || 0,
+          data_recebimento: dados.data || null,
+          obs: dados.obs || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,year,month' }
+      )
+    if (error) {
+      console.error('Error saving pagamento final do mês:', error)
+      throw new Error('Erro ao salvar pagamento final')
+    }
+  }
+
+  revalidateTag('projects', 'max')
 }

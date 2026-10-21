@@ -46,9 +46,6 @@ const emptyForm: ProjectFormData = {
   entrada_obs: null,
   entrada_origem: 'EIXO',
   entrada_sem: false,
-  pagamento_final_valor: null,
-  pagamento_final_data: null,
-  pagamento_final_obs: null,
 }
 
 const formatBRL = (v: number) =>
@@ -111,9 +108,6 @@ export function ProjectDialog({
         entrada_obs: project.entrada_obs || null,
         entrada_origem: project.entrada_origem || 'EIXO',
         entrada_sem: project.entrada_sem ?? false,
-        pagamento_final_valor: project.pagamento_final_valor != null ? Number(project.pagamento_final_valor) : null,
-        pagamento_final_data: project.pagamento_final_data || null,
-        pagamento_final_obs: project.pagamento_final_obs || null,
       })
     } else {
       setFormData(emptyForm)
@@ -164,8 +158,6 @@ export function ProjectDialog({
     const temData = !!formData.entrada_data
     setEntradaDataError(!formData.entrada_sem && temValor && !temData)
   }, [formData.entrada_valor, formData.entrada_data, formData.entrada_sem])
-
-  const isEntregue = formData.andamento === 'ENTREGUE'
 
   const saveProject = async () => {
     setIsLoading(true)
@@ -469,63 +461,6 @@ export function ProjectDialog({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Pagamento Final */}
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Pagamento Final</h3>
-              {!isEntregue && (
-                <span className="text-xs text-muted-foreground">
-                  Disponível apenas quando ENTREGUE
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="pf_valor">Valor Recebido (R$)</Label>
-                <Input
-                  id="pf_valor"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  disabled={!isEntregue}
-                  value={formData.pagamento_final_valor ?? ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pagamento_final_valor: e.target.value === '' ? null : parseFloat(e.target.value),
-                    })
-                  }
-                  placeholder="0,00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pf_data">Data do Recebimento</Label>
-                <Input
-                  id="pf_data"
-                  type="date"
-                  disabled={!isEntregue}
-                  value={formData.pagamento_final_data ?? ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pagamento_final_data: e.target.value || null })
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="pf_obs">Observações</Label>
-              <Textarea
-                id="pf_obs"
-                disabled={!isEntregue}
-                value={formData.pagamento_final_obs ?? ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, pagamento_final_obs: e.target.value || null })
-                }
-                placeholder="Ex: Bônus de entrega"
-                rows={2}
-              />
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

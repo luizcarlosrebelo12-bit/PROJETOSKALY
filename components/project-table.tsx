@@ -32,6 +32,7 @@ import type {
 import { STATUS_COLORS } from '@/lib/types'
 
 import { ProjectDialog } from './project-dialog'
+import { PagamentoFinalMes } from './pagamento-final-mes'
 import { ProjectEvaluationDialog } from './project-evaluation-dialog'
 
 import {
@@ -266,15 +267,6 @@ export function ProjectTable({
     0
   )
 
-  const totalPagamentoFinal = projects.reduce(
-    (sum, project) =>
-      sum +
-      (project.andamento === 'ENTREGUE'
-        ? Number(project.pagamento_final_valor) || 0
-        : 0),
-    0
-  )
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -283,15 +275,24 @@ export function ProjectTable({
           {projects.length === 1 ? 'projeto' : 'projetos'}
         </h2>
 
-        <Button
-          onClick={() => {
-            setEditingProject(null)
-            setIsDialogOpen(true)
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Projeto
-        </Button>
+        <div className="flex items-center gap-2">
+          <PagamentoFinalMes
+            year={year}
+            month={month}
+            hideValues={hideValues}
+            onSaved={onRefresh}
+          />
+
+          <Button
+            onClick={() => {
+              setEditingProject(null)
+              setIsDialogOpen(true)
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Projeto
+          </Button>
+        </div>
       </div>
 
       {/* Tabela visível apenas no desktop */}
@@ -313,9 +314,6 @@ export function ProjectTable({
               <TableHead className="px-2 py-2 text-right">
                 Valor
               </TableHead>
-              <TableHead className="px-2 py-2 text-right">
-                Pag. Final
-              </TableHead>
               <TableHead className="px-2 py-2">
                 Andamento
               </TableHead>
@@ -329,7 +327,7 @@ export function ProjectTable({
             {projects.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={11}
+                  colSpan={10}
                   className="h-24 text-center text-muted-foreground"
                 >
                   Nenhum projeto cadastrado neste mês
@@ -406,17 +404,6 @@ export function ProjectTable({
                           <SemEntradaBadge />
                         )}
                       </span>
-                    </TableCell>
-
-                    <TableCell className="whitespace-nowrap px-2 py-2 text-right font-medium">
-                      {project.andamento === 'ENTREGUE' &&
-                      project.pagamento_final_valor ? (
-                        formatCurrency(
-                          Number(project.pagamento_final_valor) || 0
-                        )
-                      ) : (
-                        '-'
-                      )}
                     </TableCell>
 
                     <TableCell className="px-2 py-2">
@@ -522,10 +509,6 @@ export function ProjectTable({
 
                 <TableCell className="px-2 py-2 text-right">
                   {formatCurrency(totalValue)}
-                </TableCell>
-
-                <TableCell className="px-2 py-2 text-right">
-                  {formatCurrency(totalPagamentoFinal)}
                 </TableCell>
 
                 <TableCell colSpan={2} />
@@ -645,23 +628,6 @@ export function ProjectTable({
                         )}
                       </p>
                     </div>
-
-                    {project.andamento === 'ENTREGUE' &&
-                      project.pagamento_final_valor && (
-                        <div className="col-span-2">
-                          <p className="text-xs text-muted-foreground">
-                            Pag. Final
-                          </p>
-
-                          <p className="font-medium">
-                            {formatCurrency(
-                              Number(
-                                project.pagamento_final_valor
-                              ) || 0
-                            )}
-                          </p>
-                        </div>
-                      )}
                   </div>
 
                   {/* Ações */}
@@ -742,13 +708,6 @@ export function ProjectTable({
               <div className="flex justify-between text-sm font-semibold">
                 <span>Total do Mês:</span>
                 <span>{formatCurrency(totalValue)}</span>
-              </div>
-
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Pag. Final:</span>
-                <span>
-                  {formatCurrency(totalPagamentoFinal)}
-                </span>
               </div>
             </div>
           </>
